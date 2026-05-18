@@ -97,15 +97,16 @@ class RecordingPanel: NSPanel {
   
   private func centerOnScreen() {
     guard let screen = NSScreen.main else { return }
-    let frame = screen.visibleFrame
+    let screenFrame = screen.visibleFrame
     setFrameOrigin(NSPoint(
-      x: frame.maxX - frame.width - 24,
-      y: frame.minY + 24
+      x: screenFrame.maxX - screenFrame.width - 24,
+      y: screenFrame.minY + 24
     ))
   }
   
   private func setupUI() {
-    let contentView = NSView(frame: contentRect)
+    let panelRect = self.frame
+    let contentView = NSView(frame: panelRect)
     contentView.wantsLayer = true
     contentView.layer?.cornerRadius = 16
     contentView.layer?.backgroundColor = NSColor(
@@ -130,14 +131,14 @@ class RecordingPanel: NSPanel {
     contentView.addSubview(statusLabel)
     
     timeLabel = NSTextField(labelWithString: "00:00")
-    timeLabel.frame = NSRect(x: contentRect.width - 90, y: 12, width: 74, height: 20)
+    timeLabel.frame = NSRect(x: panelRect.width - 90, y: 12, width: 74, height: 20)
     timeLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 16, weight: .bold)
     timeLabel.textColor = .white
     timeLabel.alignment = .right
     timeLabel.backgroundColor = .clear
     contentView.addSubview(timeLabel)
     
-    let waveformFrame = NSRect(x: 16, y: 50, width: contentRect.width - 32, height: 50)
+    let waveformFrame = NSRect(x: 16, y: 50, width: panelRect.width - 32, height: 50)
     waveformView = WaveformView(frame: waveformFrame)
     waveformView.wantsLayer = true
     contentView.addSubview(waveformView)
@@ -147,7 +148,7 @@ class RecordingPanel: NSPanel {
     let buttonHeight: CGFloat = 36
     let buttonSpacing: CGFloat = 12
     let totalWidth = buttonWidth * 3 + buttonSpacing * 2
-    let startX = (contentRect.width - totalWidth) / 2
+    let startX = (panelRect.width - totalWidth) / 2
     
     pauseButton = createButton(
       frame: NSRect(x: startX, y: buttonY, width: buttonWidth, height: buttonHeight),
@@ -177,7 +178,7 @@ class RecordingPanel: NSPanel {
     }
     contentView.addSubview(minimizeButton)
     
-    contentView.frame = contentRect
+    contentView.frame = panelRect
     contentView.autoresizingMask = [.width, .height]
     self.contentView = contentView
   }
@@ -236,7 +237,8 @@ class RecordingPanel: NSPanel {
   func toggleMinimize() {
     isMinimized.toggle()
     if isMinimized {
-      setFrame(NSRect(x: frame.origin.x, y: frame.origin.y, width: 180, height: 40), display: true, animate: true)
+      let currentOrigin = frame.origin
+      setFrame(NSRect(x: currentOrigin.x, y: currentOrigin.y, width: 180, height: 40), display: true, animate: true)
       statusLabel.isHidden = true
       waveformView.isHidden = true
       pauseButton.isHidden = true
@@ -250,7 +252,7 @@ class RecordingPanel: NSPanel {
       pauseButton.isHidden = false
       stopButton.isHidden = false
       minimizeButton.isHidden = false
-      timeLabel.frame = NSRect(x: contentRect.width - 90, y: 12, width: 74, height: 20)
+      timeLabel.frame = NSRect(x: normalFrame.width - 90, y: 12, width: 74, height: 20)
     }
   }
 }
