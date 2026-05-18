@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../domain/models/meeting_models.dart';
 import '../domain/services/audio_recorder.dart';
@@ -82,6 +83,7 @@ class RecordingController extends Notifier<RecordingUiState> {
           captureSystemAudio: true,
         ),
       );
+      await windowManager.minimize();
       state = state.copyWith(isBusy: false, clearError: true);
     } on Object catch (error) {
       state = state.copyWith(isBusy: false, errorMessage: error.toString());
@@ -173,6 +175,7 @@ class RecordingController extends Notifier<RecordingUiState> {
       }
 
       state = const RecordingUiState();
+      await windowManager.restore();
     } on Object catch (error) {
       await _updateMeetingStatus(snapshot.meetingId, MeetingStatus.failed);
       state = state.copyWith(isBusy: false, errorMessage: error.toString());

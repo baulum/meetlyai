@@ -6,13 +6,25 @@ import '../chat/meeting_chat_view.dart';
 import '../recording/recording_panel.dart';
 import '../settings/settings_drawer.dart';
 import '../sidebar/meeting_sidebar.dart';
+import '../widgets/recording_overlay_channel.dart';
 import '../widgets/recording_overlay_watcher.dart';
 
-class DesktopShell extends ConsumerWidget {
+class DesktopShell extends ConsumerStatefulWidget {
   const DesktopShell({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DesktopShell> createState() => _DesktopShellState();
+}
+
+class _DesktopShellState extends ConsumerState<DesktopShell> {
+  @override
+  void initState() {
+    super.initState();
+    RecordingOverlayChannel.init(ref);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final selectedMeetingId = ref.watch(selectedMeetingIdProvider);
 
     return Scaffold(
