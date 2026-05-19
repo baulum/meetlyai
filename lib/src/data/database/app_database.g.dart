@@ -3589,6 +3589,519 @@ class ChatMessageRowsCompanion extends UpdateCompanion<ChatMessageRecord> {
   }
 }
 
+class $TodoRowsTable extends TodoRows
+    with TableInfo<$TodoRowsTable, TodoRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TodoRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _meetingIdMeta = const VerificationMeta(
+    'meetingId',
+  );
+  @override
+  late final GeneratedColumn<String> meetingId = GeneratedColumn<String>(
+    'meeting_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES meeting_rows (id)',
+    ),
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+    'text',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _doneMeta = const VerificationMeta('done');
+  @override
+  late final GeneratedColumn<bool> done = GeneratedColumn<bool>(
+    'done',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("done" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dueDateMeta = const VerificationMeta(
+    'dueDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> dueDate = GeneratedColumn<DateTime>(
+    'due_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    meetingId,
+    content,
+    done,
+    createdAt,
+    dueDate,
+    notes,
+    sortOrder,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'todo_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TodoRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('meeting_id')) {
+      context.handle(
+        _meetingIdMeta,
+        meetingId.isAcceptableOrUnknown(data['meeting_id']!, _meetingIdMeta),
+      );
+    }
+    if (data.containsKey('text')) {
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['text']!, _contentMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('done')) {
+      context.handle(
+        _doneMeta,
+        done.isAcceptableOrUnknown(data['done']!, _doneMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('due_date')) {
+      context.handle(
+        _dueDateMeta,
+        dueDate.isAcceptableOrUnknown(data['due_date']!, _dueDateMeta),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TodoRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TodoRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      meetingId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}meeting_id'],
+      ),
+      content: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}text'],
+      )!,
+      done: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}done'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      dueDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}due_date'],
+      ),
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+    );
+  }
+
+  @override
+  $TodoRowsTable createAlias(String alias) {
+    return $TodoRowsTable(attachedDatabase, alias);
+  }
+}
+
+class TodoRecord extends DataClass implements Insertable<TodoRecord> {
+  final String id;
+  final String? meetingId;
+  final String content;
+  final bool done;
+  final DateTime createdAt;
+  final DateTime? dueDate;
+  final String? notes;
+  final int sortOrder;
+  const TodoRecord({
+    required this.id,
+    this.meetingId,
+    required this.content,
+    required this.done,
+    required this.createdAt,
+    this.dueDate,
+    this.notes,
+    required this.sortOrder,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || meetingId != null) {
+      map['meeting_id'] = Variable<String>(meetingId);
+    }
+    map['text'] = Variable<String>(content);
+    map['done'] = Variable<bool>(done);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || dueDate != null) {
+      map['due_date'] = Variable<DateTime>(dueDate);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['sort_order'] = Variable<int>(sortOrder);
+    return map;
+  }
+
+  TodoRowsCompanion toCompanion(bool nullToAbsent) {
+    return TodoRowsCompanion(
+      id: Value(id),
+      meetingId: meetingId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(meetingId),
+      content: Value(content),
+      done: Value(done),
+      createdAt: Value(createdAt),
+      dueDate: dueDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dueDate),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      sortOrder: Value(sortOrder),
+    );
+  }
+
+  factory TodoRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TodoRecord(
+      id: serializer.fromJson<String>(json['id']),
+      meetingId: serializer.fromJson<String?>(json['meetingId']),
+      content: serializer.fromJson<String>(json['content']),
+      done: serializer.fromJson<bool>(json['done']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      dueDate: serializer.fromJson<DateTime?>(json['dueDate']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'meetingId': serializer.toJson<String?>(meetingId),
+      'content': serializer.toJson<String>(content),
+      'done': serializer.toJson<bool>(done),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'dueDate': serializer.toJson<DateTime?>(dueDate),
+      'notes': serializer.toJson<String?>(notes),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+    };
+  }
+
+  TodoRecord copyWith({
+    String? id,
+    Value<String?> meetingId = const Value.absent(),
+    String? content,
+    bool? done,
+    DateTime? createdAt,
+    Value<DateTime?> dueDate = const Value.absent(),
+    Value<String?> notes = const Value.absent(),
+    int? sortOrder,
+  }) => TodoRecord(
+    id: id ?? this.id,
+    meetingId: meetingId.present ? meetingId.value : this.meetingId,
+    content: content ?? this.content,
+    done: done ?? this.done,
+    createdAt: createdAt ?? this.createdAt,
+    dueDate: dueDate.present ? dueDate.value : this.dueDate,
+    notes: notes.present ? notes.value : this.notes,
+    sortOrder: sortOrder ?? this.sortOrder,
+  );
+  TodoRecord copyWithCompanion(TodoRowsCompanion data) {
+    return TodoRecord(
+      id: data.id.present ? data.id.value : this.id,
+      meetingId: data.meetingId.present ? data.meetingId.value : this.meetingId,
+      content: data.content.present ? data.content.value : this.content,
+      done: data.done.present ? data.done.value : this.done,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TodoRecord(')
+          ..write('id: $id, ')
+          ..write('meetingId: $meetingId, ')
+          ..write('content: $content, ')
+          ..write('done: $done, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('notes: $notes, ')
+          ..write('sortOrder: $sortOrder')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    meetingId,
+    content,
+    done,
+    createdAt,
+    dueDate,
+    notes,
+    sortOrder,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TodoRecord &&
+          other.id == this.id &&
+          other.meetingId == this.meetingId &&
+          other.content == this.content &&
+          other.done == this.done &&
+          other.createdAt == this.createdAt &&
+          other.dueDate == this.dueDate &&
+          other.notes == this.notes &&
+          other.sortOrder == this.sortOrder);
+}
+
+class TodoRowsCompanion extends UpdateCompanion<TodoRecord> {
+  final Value<String> id;
+  final Value<String?> meetingId;
+  final Value<String> content;
+  final Value<bool> done;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> dueDate;
+  final Value<String?> notes;
+  final Value<int> sortOrder;
+  final Value<int> rowid;
+  const TodoRowsCompanion({
+    this.id = const Value.absent(),
+    this.meetingId = const Value.absent(),
+    this.content = const Value.absent(),
+    this.done = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.dueDate = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TodoRowsCompanion.insert({
+    required String id,
+    this.meetingId = const Value.absent(),
+    required String content,
+    this.done = const Value.absent(),
+    required DateTime createdAt,
+    this.dueDate = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       content = Value(content),
+       createdAt = Value(createdAt);
+  static Insertable<TodoRecord> custom({
+    Expression<String>? id,
+    Expression<String>? meetingId,
+    Expression<String>? content,
+    Expression<bool>? done,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? dueDate,
+    Expression<String>? notes,
+    Expression<int>? sortOrder,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (meetingId != null) 'meeting_id': meetingId,
+      if (content != null) 'text': content,
+      if (done != null) 'done': done,
+      if (createdAt != null) 'created_at': createdAt,
+      if (dueDate != null) 'due_date': dueDate,
+      if (notes != null) 'notes': notes,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TodoRowsCompanion copyWith({
+    Value<String>? id,
+    Value<String?>? meetingId,
+    Value<String>? content,
+    Value<bool>? done,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? dueDate,
+    Value<String?>? notes,
+    Value<int>? sortOrder,
+    Value<int>? rowid,
+  }) {
+    return TodoRowsCompanion(
+      id: id ?? this.id,
+      meetingId: meetingId ?? this.meetingId,
+      content: content ?? this.content,
+      done: done ?? this.done,
+      createdAt: createdAt ?? this.createdAt,
+      dueDate: dueDate ?? this.dueDate,
+      notes: notes ?? this.notes,
+      sortOrder: sortOrder ?? this.sortOrder,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (meetingId.present) {
+      map['meeting_id'] = Variable<String>(meetingId.value);
+    }
+    if (content.present) {
+      map['text'] = Variable<String>(content.value);
+    }
+    if (done.present) {
+      map['done'] = Variable<bool>(done.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (dueDate.present) {
+      map['due_date'] = Variable<DateTime>(dueDate.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TodoRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('meetingId: $meetingId, ')
+          ..write('content: $content, ')
+          ..write('done: $done, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('notes: $notes, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SettingRowsTable extends SettingRows
     with TableInfo<$SettingRowsTable, SettingRecord> {
   @override
@@ -3864,6 +4377,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ChatMessageRowsTable chatMessageRows = $ChatMessageRowsTable(
     this,
   );
+  late final $TodoRowsTable todoRows = $TodoRowsTable(this);
   late final $SettingRowsTable settingRows = $SettingRowsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -3877,6 +4391,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     actionItemRows,
     decisionRows,
     chatMessageRows,
+    todoRows,
     settingRows,
   ];
 }
@@ -4048,6 +4563,24 @@ final class $$MeetingRowsTableReferences
     final cache = $_typedResult.readTableOrNull(
       _chatMessageRowsRefsTable($_db),
     );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$TodoRowsTable, List<TodoRecord>>
+  _todoRowsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.todoRows,
+    aliasName: $_aliasNameGenerator(db.meetingRows.id, db.todoRows.meetingId),
+  );
+
+  $$TodoRowsTableProcessedTableManager get todoRowsRefs {
+    final manager = $$TodoRowsTableTableManager(
+      $_db,
+      $_db.todoRows,
+    ).filter((f) => f.meetingId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_todoRowsRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -4265,6 +4798,31 @@ class $$MeetingRowsTableFilterComposer
           }) => $$ChatMessageRowsTableFilterComposer(
             $db: $db,
             $table: $db.chatMessageRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> todoRowsRefs(
+    Expression<bool> Function($$TodoRowsTableFilterComposer f) f,
+  ) {
+    final $$TodoRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.todoRows,
+      getReferencedColumn: (t) => t.meetingId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TodoRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.todoRows,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -4548,6 +5106,31 @@ class $$MeetingRowsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> todoRowsRefs<T extends Object>(
+    Expression<T> Function($$TodoRowsTableAnnotationComposer a) f,
+  ) {
+    final $$TodoRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.todoRows,
+      getReferencedColumn: (t) => t.meetingId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TodoRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.todoRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$MeetingRowsTableTableManager
@@ -4570,6 +5153,7 @@ class $$MeetingRowsTableTableManager
             bool actionItemRowsRefs,
             bool decisionRowsRefs,
             bool chatMessageRowsRefs,
+            bool todoRowsRefs,
           })
         > {
   $$MeetingRowsTableTableManager(_$AppDatabase db, $MeetingRowsTable table)
@@ -4659,6 +5243,7 @@ class $$MeetingRowsTableTableManager
                 actionItemRowsRefs = false,
                 decisionRowsRefs = false,
                 chatMessageRowsRefs = false,
+                todoRowsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -4669,6 +5254,7 @@ class $$MeetingRowsTableTableManager
                     if (actionItemRowsRefs) db.actionItemRows,
                     if (decisionRowsRefs) db.decisionRows,
                     if (chatMessageRowsRefs) db.chatMessageRows,
+                    if (todoRowsRefs) db.todoRows,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -4799,6 +5385,27 @@ class $$MeetingRowsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (todoRowsRefs)
+                        await $_getPrefetchedData<
+                          MeetingRecord,
+                          $MeetingRowsTable,
+                          TodoRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$MeetingRowsTableReferences
+                              ._todoRowsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$MeetingRowsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).todoRowsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.meetingId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -4826,6 +5433,7 @@ typedef $$MeetingRowsTableProcessedTableManager =
         bool actionItemRowsRefs,
         bool decisionRowsRefs,
         bool chatMessageRowsRefs,
+        bool todoRowsRefs,
       })
     >;
 typedef $$AudioAssetRowsTableCreateCompanionBuilder =
@@ -7063,6 +7671,382 @@ typedef $$ChatMessageRowsTableProcessedTableManager =
       ChatMessageRecord,
       PrefetchHooks Function({bool meetingId})
     >;
+typedef $$TodoRowsTableCreateCompanionBuilder =
+    TodoRowsCompanion Function({
+      required String id,
+      Value<String?> meetingId,
+      required String content,
+      Value<bool> done,
+      required DateTime createdAt,
+      Value<DateTime?> dueDate,
+      Value<String?> notes,
+      Value<int> sortOrder,
+      Value<int> rowid,
+    });
+typedef $$TodoRowsTableUpdateCompanionBuilder =
+    TodoRowsCompanion Function({
+      Value<String> id,
+      Value<String?> meetingId,
+      Value<String> content,
+      Value<bool> done,
+      Value<DateTime> createdAt,
+      Value<DateTime?> dueDate,
+      Value<String?> notes,
+      Value<int> sortOrder,
+      Value<int> rowid,
+    });
+
+final class $$TodoRowsTableReferences
+    extends BaseReferences<_$AppDatabase, $TodoRowsTable, TodoRecord> {
+  $$TodoRowsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $MeetingRowsTable _meetingIdTable(_$AppDatabase db) =>
+      db.meetingRows.createAlias(
+        $_aliasNameGenerator(db.todoRows.meetingId, db.meetingRows.id),
+      );
+
+  $$MeetingRowsTableProcessedTableManager? get meetingId {
+    final $_column = $_itemColumn<String>('meeting_id');
+    if ($_column == null) return null;
+    final manager = $$MeetingRowsTableTableManager(
+      $_db,
+      $_db.meetingRows,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_meetingIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$TodoRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $TodoRowsTable> {
+  $$TodoRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get done => $composableBuilder(
+    column: $table.done,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get dueDate => $composableBuilder(
+    column: $table.dueDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$MeetingRowsTableFilterComposer get meetingId {
+    final $$MeetingRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.meetingId,
+      referencedTable: $db.meetingRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MeetingRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.meetingRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TodoRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TodoRowsTable> {
+  $$TodoRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get done => $composableBuilder(
+    column: $table.done,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get dueDate => $composableBuilder(
+    column: $table.dueDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$MeetingRowsTableOrderingComposer get meetingId {
+    final $$MeetingRowsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.meetingId,
+      referencedTable: $db.meetingRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MeetingRowsTableOrderingComposer(
+            $db: $db,
+            $table: $db.meetingRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TodoRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TodoRowsTable> {
+  $$TodoRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<bool> get done =>
+      $composableBuilder(column: $table.done, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get dueDate =>
+      $composableBuilder(column: $table.dueDate, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  $$MeetingRowsTableAnnotationComposer get meetingId {
+    final $$MeetingRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.meetingId,
+      referencedTable: $db.meetingRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MeetingRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.meetingRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TodoRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TodoRowsTable,
+          TodoRecord,
+          $$TodoRowsTableFilterComposer,
+          $$TodoRowsTableOrderingComposer,
+          $$TodoRowsTableAnnotationComposer,
+          $$TodoRowsTableCreateCompanionBuilder,
+          $$TodoRowsTableUpdateCompanionBuilder,
+          (TodoRecord, $$TodoRowsTableReferences),
+          TodoRecord,
+          PrefetchHooks Function({bool meetingId})
+        > {
+  $$TodoRowsTableTableManager(_$AppDatabase db, $TodoRowsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TodoRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TodoRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TodoRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String?> meetingId = const Value.absent(),
+                Value<String> content = const Value.absent(),
+                Value<bool> done = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> dueDate = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TodoRowsCompanion(
+                id: id,
+                meetingId: meetingId,
+                content: content,
+                done: done,
+                createdAt: createdAt,
+                dueDate: dueDate,
+                notes: notes,
+                sortOrder: sortOrder,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String?> meetingId = const Value.absent(),
+                required String content,
+                Value<bool> done = const Value.absent(),
+                required DateTime createdAt,
+                Value<DateTime?> dueDate = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TodoRowsCompanion.insert(
+                id: id,
+                meetingId: meetingId,
+                content: content,
+                done: done,
+                createdAt: createdAt,
+                dueDate: dueDate,
+                notes: notes,
+                sortOrder: sortOrder,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$TodoRowsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({meetingId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (meetingId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.meetingId,
+                                referencedTable: $$TodoRowsTableReferences
+                                    ._meetingIdTable(db),
+                                referencedColumn: $$TodoRowsTableReferences
+                                    ._meetingIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TodoRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TodoRowsTable,
+      TodoRecord,
+      $$TodoRowsTableFilterComposer,
+      $$TodoRowsTableOrderingComposer,
+      $$TodoRowsTableAnnotationComposer,
+      $$TodoRowsTableCreateCompanionBuilder,
+      $$TodoRowsTableUpdateCompanionBuilder,
+      (TodoRecord, $$TodoRowsTableReferences),
+      TodoRecord,
+      PrefetchHooks Function({bool meetingId})
+    >;
 typedef $$SettingRowsTableCreateCompanionBuilder =
     SettingRowsCompanion Function({
       required String key,
@@ -7243,6 +8227,8 @@ class $AppDatabaseManager {
       $$DecisionRowsTableTableManager(_db, _db.decisionRows);
   $$ChatMessageRowsTableTableManager get chatMessageRows =>
       $$ChatMessageRowsTableTableManager(_db, _db.chatMessageRows);
+  $$TodoRowsTableTableManager get todoRows =>
+      $$TodoRowsTableTableManager(_db, _db.todoRows);
   $$SettingRowsTableTableManager get settingRows =>
       $$SettingRowsTableTableManager(_db, _db.settingRows);
 }

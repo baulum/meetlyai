@@ -16,6 +16,8 @@ import '../domain/services/settings_repository.dart';
 import '../domain/services/transcription_engine.dart';
 import 'recording_controller.dart';
 
+enum AppSection { meetings, todos, settings }
+
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   final database = AppDatabase();
   ref.onDispose(database.close);
@@ -57,9 +59,38 @@ final selectedMeetingIdProvider =
       SelectedMeetingController.new,
     );
 
+final appSectionProvider = NotifierProvider<AppSectionController, AppSection>(
+  AppSectionController.new,
+);
+
+class AppSectionController extends Notifier<AppSection> {
+  @override
+  AppSection build() => AppSection.meetings;
+
+  void showMeetings() => state = AppSection.meetings;
+  void showTodos() => state = AppSection.todos;
+  void showSettings() => state = AppSection.settings;
+}
+
+final sidebarCollapsedProvider =
+    NotifierProvider<SidebarCollapsedController, bool>(
+      SidebarCollapsedController.new,
+    );
+
+class SidebarCollapsedController extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void toggle() => state = !state;
+}
+
 final meetingsProvider = StreamProvider<List<Meeting>>((ref) {
   final query = ref.watch(meetingSearchProvider);
   return ref.watch(meetingRepositoryProvider).watchMeetings(query: query);
+});
+
+final allMeetingsProvider = StreamProvider<List<Meeting>>((ref) {
+  return ref.watch(meetingRepositoryProvider).watchMeetings();
 });
 
 final selectedMeetingProvider = FutureProvider<Meeting?>((ref) {
@@ -85,6 +116,15 @@ final chatMessagesProvider = StreamProvider.family<List<ChatMessage>, String>((
 final meetingSummaryProvider = StreamProvider.family<MeetingSummary?, String>(
   (ref, meetingId) =>
       ref.watch(meetingRepositoryProvider).watchSummary(meetingId),
+);
+
+final meetingTodosProvider = StreamProvider.family<List<Todo>, String>(
+  (ref, meetingId) =>
+      ref.watch(meetingRepositoryProvider).watchTodos(meetingId: meetingId),
+);
+
+final allTodosProvider = StreamProvider<List<Todo>>(
+  (ref) => ref.watch(meetingRepositoryProvider).watchTodos(),
 );
 
 final recordingControllerProvider =

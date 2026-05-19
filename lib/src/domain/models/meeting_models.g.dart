@@ -282,3 +282,27 @@ const _$ChatRoleEnumMap = {
   ChatRole.assistant: 'assistant',
   ChatRole.system: 'system',
 };
+
+_Todo _$TodoFromJson(Map<String, dynamic> json) => _Todo(
+  id: json['id'] as String,
+  meetingId: json['meetingId'] as String?,
+  content: json['content'] as String,
+  done: json['done'] as bool? ?? false,
+  createdAt: DateTime.parse(json['createdAt'] as String),
+  dueDate: json['dueDate'] == null
+      ? null
+      : DateTime.parse(json['dueDate'] as String),
+  notes: json['notes'] as String?,
+  sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
+);
+
+Map<String, dynamic> _$TodoToJson(_Todo instance) => <String, dynamic>{
+  'id': instance.id,
+  'meetingId': instance.meetingId,
+  'content': instance.content,
+  'done': instance.done,
+  'createdAt': instance.createdAt.toIso8601String(),
+  'dueDate': instance.dueDate?.toIso8601String(),
+  'notes': instance.notes,
+  'sortOrder': instance.sortOrder,
+};

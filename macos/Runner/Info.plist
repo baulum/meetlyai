@@ -28,6 +28,8 @@
 	<string>MainMenu</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>MeetlyAI records microphone audio locally to transcribe meetings on this Mac.</string>
+	<key>NSScreenCaptureUsageDescription</key>
+	<string>MeetlyAI records desktop audio locally so system participants can be transcribed and summarized.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

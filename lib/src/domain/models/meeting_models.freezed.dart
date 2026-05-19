@@ -3721,4 +3721,288 @@ as String,
 
 }
 
+
+/// @nodoc
+mixin _$Todo {
+
+ String get id; String? get meetingId; String get content; bool get done; DateTime get createdAt; DateTime? get dueDate; String? get notes; int get sortOrder;
+/// Create a copy of Todo
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$TodoCopyWith<Todo> get copyWith => _$TodoCopyWithImpl<Todo>(this as Todo, _$identity);
+
+  /// Serializes this Todo to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Todo&&(identical(other.id, id) || other.id == id)&&(identical(other.meetingId, meetingId) || other.meetingId == meetingId)&&(identical(other.content, content) || other.content == content)&&(identical(other.done, done) || other.done == done)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.dueDate, dueDate) || other.dueDate == dueDate)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.sortOrder, sortOrder) || other.sortOrder == sortOrder));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,meetingId,content,done,createdAt,dueDate,notes,sortOrder);
+
+@override
+String toString() {
+  return 'Todo(id: $id, meetingId: $meetingId, content: $content, done: $done, createdAt: $createdAt, dueDate: $dueDate, notes: $notes, sortOrder: $sortOrder)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $TodoCopyWith<$Res>  {
+  factory $TodoCopyWith(Todo value, $Res Function(Todo) _then) = _$TodoCopyWithImpl;
+@useResult
+$Res call({
+ String id, String? meetingId, String content, bool done, DateTime createdAt, DateTime? dueDate, String? notes, int sortOrder
+});
+
+
+
+
+}
+/// @nodoc
+class _$TodoCopyWithImpl<$Res>
+    implements $TodoCopyWith<$Res> {
+  _$TodoCopyWithImpl(this._self, this._then);
+
+  final Todo _self;
+  final $Res Function(Todo) _then;
+
+/// Create a copy of Todo
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? meetingId = freezed,Object? content = null,Object? done = null,Object? createdAt = null,Object? dueDate = freezed,Object? notes = freezed,Object? sortOrder = null,}) {
+  return _then(_self.copyWith(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,meetingId: freezed == meetingId ? _self.meetingId : meetingId // ignore: cast_nullable_to_non_nullable
+as String?,content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
+as String,done: null == done ? _self.done : done // ignore: cast_nullable_to_non_nullable
+as bool,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as DateTime,dueDate: freezed == dueDate ? _self.dueDate : dueDate // ignore: cast_nullable_to_non_nullable
+as DateTime?,notes: freezed == notes ? _self.notes : notes // ignore: cast_nullable_to_non_nullable
+as String?,sortOrder: null == sortOrder ? _self.sortOrder : sortOrder // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [Todo].
+extension TodoPatterns on Todo {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _Todo value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _Todo() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _Todo value)  $default,){
+final _that = this;
+switch (_that) {
+case _Todo():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _Todo value)?  $default,){
+final _that = this;
+switch (_that) {
+case _Todo() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String? meetingId,  String content,  bool done,  DateTime createdAt,  DateTime? dueDate,  String? notes,  int sortOrder)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _Todo() when $default != null:
+return $default(_that.id,_that.meetingId,_that.content,_that.done,_that.createdAt,_that.dueDate,_that.notes,_that.sortOrder);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String? meetingId,  String content,  bool done,  DateTime createdAt,  DateTime? dueDate,  String? notes,  int sortOrder)  $default,) {final _that = this;
+switch (_that) {
+case _Todo():
+return $default(_that.id,_that.meetingId,_that.content,_that.done,_that.createdAt,_that.dueDate,_that.notes,_that.sortOrder);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String? meetingId,  String content,  bool done,  DateTime createdAt,  DateTime? dueDate,  String? notes,  int sortOrder)?  $default,) {final _that = this;
+switch (_that) {
+case _Todo() when $default != null:
+return $default(_that.id,_that.meetingId,_that.content,_that.done,_that.createdAt,_that.dueDate,_that.notes,_that.sortOrder);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _Todo implements Todo {
+  const _Todo({required this.id, this.meetingId, required this.content, this.done = false, required this.createdAt, this.dueDate, this.notes, this.sortOrder = 0});
+  factory _Todo.fromJson(Map<String, dynamic> json) => _$TodoFromJson(json);
+
+@override final  String id;
+@override final  String? meetingId;
+@override final  String content;
+@override@JsonKey() final  bool done;
+@override final  DateTime createdAt;
+@override final  DateTime? dueDate;
+@override final  String? notes;
+@override@JsonKey() final  int sortOrder;
+
+/// Create a copy of Todo
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$TodoCopyWith<_Todo> get copyWith => __$TodoCopyWithImpl<_Todo>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$TodoToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Todo&&(identical(other.id, id) || other.id == id)&&(identical(other.meetingId, meetingId) || other.meetingId == meetingId)&&(identical(other.content, content) || other.content == content)&&(identical(other.done, done) || other.done == done)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.dueDate, dueDate) || other.dueDate == dueDate)&&(identical(other.notes, notes) || other.notes == notes)&&(identical(other.sortOrder, sortOrder) || other.sortOrder == sortOrder));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,meetingId,content,done,createdAt,dueDate,notes,sortOrder);
+
+@override
+String toString() {
+  return 'Todo(id: $id, meetingId: $meetingId, content: $content, done: $done, createdAt: $createdAt, dueDate: $dueDate, notes: $notes, sortOrder: $sortOrder)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$TodoCopyWith<$Res> implements $TodoCopyWith<$Res> {
+  factory _$TodoCopyWith(_Todo value, $Res Function(_Todo) _then) = __$TodoCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String? meetingId, String content, bool done, DateTime createdAt, DateTime? dueDate, String? notes, int sortOrder
+});
+
+
+
+
+}
+/// @nodoc
+class __$TodoCopyWithImpl<$Res>
+    implements _$TodoCopyWith<$Res> {
+  __$TodoCopyWithImpl(this._self, this._then);
+
+  final _Todo _self;
+  final $Res Function(_Todo) _then;
+
+/// Create a copy of Todo
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? meetingId = freezed,Object? content = null,Object? done = null,Object? createdAt = null,Object? dueDate = freezed,Object? notes = freezed,Object? sortOrder = null,}) {
+  return _then(_Todo(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,meetingId: freezed == meetingId ? _self.meetingId : meetingId // ignore: cast_nullable_to_non_nullable
+as String?,content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
+as String,done: null == done ? _self.done : done // ignore: cast_nullable_to_non_nullable
+as bool,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as DateTime,dueDate: freezed == dueDate ? _self.dueDate : dueDate // ignore: cast_nullable_to_non_nullable
+as DateTime?,notes: freezed == notes ? _self.notes : notes // ignore: cast_nullable_to_non_nullable
+as String?,sortOrder: null == sortOrder ? _self.sortOrder : sortOrder // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+
+}
+
 // dart format on

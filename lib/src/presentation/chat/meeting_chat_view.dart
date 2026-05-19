@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +11,8 @@ import 'package:path_provider/path_provider.dart';
 import '../../application/providers.dart';
 import '../../domain/models/meeting_models.dart';
 import '../../utils/formatters.dart';
+
+enum _MeetingTab { transcript, summary, chat }
 
 class MeetingChatView extends ConsumerStatefulWidget {
   const MeetingChatView({super.key, required this.meetingId});
@@ -23,13 +26,14 @@ class MeetingChatView extends ConsumerStatefulWidget {
 class _MeetingChatViewState extends ConsumerState<MeetingChatView> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  bool _showTranscript = false;
-  bool _showChat = false;
+  final _chatScrollController = ScrollController();
+  _MeetingTab _selectedTab = _MeetingTab.transcript;
 
   @override
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
+    _chatScrollController.dispose();
     super.dispose();
   }
 
@@ -57,36 +61,83 @@ class _MeetingChatViewState extends ConsumerState<MeetingChatView> {
           ),
         ),
         Expanded(
-          child: ListView(
-            controller: _scrollController,
+          child: Padding(
             padding: const EdgeInsets.fromLTRB(26, 0, 26, 24),
-            children: [
-              if (summary != null)
-                _SummaryBlock(summary: summary)
-              else if (meeting?.status == MeetingStatus.summarizing)
-                const _SummaryLoadingBlock(),
-              _TranscriptToggle(
-                status: meeting?.status,
-                segmentCount: transcript.length,
-                showTranscript: _showTranscript,
-                onToggle: transcript.isEmpty
-                    ? null
-                    : () => setState(() => _showTranscript = !_showTranscript),
-              ),
-              if (_showTranscript && transcript.isNotEmpty)
-                _TranscriptBlock(segments: transcript),
-              _ChatToggle(
-                messageCount: messages.length,
-                showChat: _showChat,
-                onToggle: () => setState(() => _showChat = !_showChat),
-              ),
-              if (_showChat)
-                _ChatBlock(
-                  messages: messages,
-                  controller: _controller,
-                  onSend: () => _sendQuestion(),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  top: 62,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeOut,
+                    child: switch (_selectedTab) {
+                      _MeetingTab.transcript => ListView(
+                        key: const ValueKey('transcript-tab'),
+                        controller: _scrollController,
+                        children: [
+                          _TranscriptBlock(
+                            meetingId: widget.meetingId,
+                            status: meeting?.status,
+                            segments: transcript,
+                          ),
+                        ],
+                      ),
+                      _MeetingTab.summary => ListView(
+                        key: const ValueKey('summary-tab'),
+                        children: [
+                          if (meeting?.status == MeetingStatus.summarizing &&
+                              summary == null)
+                            const _SummaryLoadingSection()
+                          else if (summary == null)
+                            const _EmptyTabSection(
+                              title: 'AI Summary',
+                              icon: Icons.auto_awesome,
+                              message:
+                                  'The AI summary appears here after the meeting has been transcribed and analyzed.',
+                            )
+                          else
+                            _SummaryBlock(
+                              summary: summary,
+                              transcript: transcript,
+                              onSummaryChanged: (updated) => ref
+                                  .read(meetingRepositoryProvider)
+                                  .saveSummary(updated),
+                              onRegenerate: () => ref
+                                  .read(recordingControllerProvider.notifier)
+                                  .regenerateSummary(widget.meetingId),
+                            ),
+                        ],
+                      ),
+                      _MeetingTab.chat => ListView(
+                        key: const ValueKey('chat-tab'),
+                        controller: _chatScrollController,
+                        children: [
+                          _ChatBlock(
+                            messages: messages,
+                            transcript: transcript,
+                            controller: _controller,
+                            onSend: () => _sendQuestion(),
+                          ),
+                        ],
+                      ),
+                    },
+                  ),
                 ),
-            ],
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: _FloatingMeetingTabs(
+                    selected: _selectedTab,
+                    transcriptCount: transcript.length,
+                    hasSummary: summary != null,
+                    chatCount: messages.length,
+                    onSelected: (tab) => setState(() => _selectedTab = tab),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -96,19 +147,137 @@ class _MeetingChatViewState extends ConsumerState<MeetingChatView> {
   Future<void> _sendQuestion() async {
     final text = _controller.text;
     _controller.clear();
-    if (!_showChat) {
-      setState(() => _showChat = true);
-    }
     await ref
         .read(recordingControllerProvider.notifier)
         .sendQuestion(widget.meetingId, text);
-    if (_scrollController.hasClients) {
-      await _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
+    if (_chatScrollController.hasClients) {
+      await _chatScrollController.animateTo(
+        _chatScrollController.position.maxScrollExtent,
         duration: const Duration(milliseconds: 260),
         curve: Curves.easeOut,
       );
     }
+  }
+}
+
+class _FloatingMeetingTabs extends StatelessWidget {
+  const _FloatingMeetingTabs({
+    required this.selected,
+    required this.transcriptCount,
+    required this.hasSummary,
+    required this.chatCount,
+    required this.onSelected,
+  });
+
+  final _MeetingTab selected;
+  final int transcriptCount;
+  final bool hasSummary;
+  final int chatCount;
+  final ValueChanged<_MeetingTab> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: const Color(0xE60F1217),
+            border: Border.all(color: const Color(0xFF252B33)),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.24),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: SegmentedButton<_MeetingTab>(
+            showSelectedIcon: false,
+            style: ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              ),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              ),
+              side: const WidgetStatePropertyAll(BorderSide.none),
+            ),
+            segments: [
+              ButtonSegment(
+                value: _MeetingTab.transcript,
+                icon: const Icon(Icons.subject, size: 18),
+                label: Text(
+                  transcriptCount > 0
+                      ? 'Transcript $transcriptCount'
+                      : 'Transcript',
+                ),
+              ),
+              ButtonSegment(
+                value: _MeetingTab.summary,
+                icon: Icon(
+                  hasSummary ? Icons.auto_awesome : Icons.auto_awesome_outlined,
+                  size: 18,
+                ),
+                label: const Text('AI Summary'),
+              ),
+              ButtonSegment(
+                value: _MeetingTab.chat,
+                icon: const Icon(Icons.forum_outlined, size: 18),
+                label: Text(chatCount > 0 ? 'Chat $chatCount' : 'Chat'),
+              ),
+            ],
+            selected: {selected},
+            onSelectionChanged: (selection) => onSelected(selection.first),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyTabSection extends StatelessWidget {
+  const _EmptyTabSection({
+    required this.title,
+    required this.icon,
+    required this.message,
+  });
+
+  final String title;
+  final IconData icon;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Section(
+      title: title,
+      child: Row(
+        children: [
+          Icon(icon, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: const Color(0xFFB8C0CC)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryLoadingSection extends StatelessWidget {
+  const _SummaryLoadingSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _Section(title: 'AI Summary', child: _SummaryLoadingInline());
   }
 }
 
@@ -237,7 +406,8 @@ class _Header extends StatelessWidget {
       }
 
       // If user selected a location, use it; otherwise use default location
-      final finalDirectory = selectedPath ??
+      final finalDirectory =
+          selectedPath ??
           p.join(
             (await getApplicationDocumentsDirectory()).path,
             'MeetlyAI',
@@ -266,55 +436,96 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _SummaryLoadingBlock extends StatelessWidget {
-  const _SummaryLoadingBlock();
+class _SummaryLoadingInline extends StatelessWidget {
+  const _SummaryLoadingInline();
 
   @override
   Widget build(BuildContext context) {
-    return _Section(
-      title: 'Summary',
-      child: Row(
-        children: [
-          SizedBox.square(
-            dimension: 18,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Theme.of(context).colorScheme.primary,
-            ),
+    return Row(
+      children: [
+        SizedBox.square(
+          dimension: 16,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Theme.of(context).colorScheme.primary,
           ),
-          const SizedBox(width: 12),
-          Text(
-            'Creating structured summary...',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: const Color(0xFFB8C0CC)),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          'Creating summary...',
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: const Color(0xFFB8C0CC)),
+        ),
+      ],
     );
   }
 }
 
 class _SummaryBlock extends StatelessWidget {
-  const _SummaryBlock({required this.summary});
+  const _SummaryBlock({
+    required this.summary,
+    required this.transcript,
+    required this.onSummaryChanged,
+    required this.onRegenerate,
+  });
 
   final MeetingSummary summary;
+  final List<TranscriptSegment> transcript;
+  final Future<void> Function(MeetingSummary summary) onSummaryChanged;
+  final Future<void> Function() onRegenerate;
 
   @override
   Widget build(BuildContext context) {
     return _Section(
-      title: 'Summary',
+      title: 'AI Summary',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => _editSummaryDetails(
+                    context: context,
+                    summary: summary,
+                    onSaved: onSummaryChanged,
+                  ),
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  label: const Text('Edit details'),
+                ),
+                FilledButton.tonalIcon(
+                  onPressed: onRegenerate,
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Regenerate'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
           _BulletCard(
             title: 'Key points',
             icon: Icons.auto_awesome,
-            text: summary.overview,
+            text: _replaceEvidenceIds(summary.overview, transcript),
+            onEdit: () => _editLongText(
+              context: context,
+              title: 'Edit key points',
+              initialValue: summary.overview,
+              onSaved: (value) =>
+                  onSummaryChanged(summary.copyWith(overview: value)),
+            ),
           ),
           if (summary.chapters.isNotEmpty) ...[
             const SizedBox(height: 20),
-            _TopicCards(chapters: summary.chapters),
+            _TopicCards(
+              chapters: summary.chapters,
+              transcript: transcript,
+              onChanged: (chapters) =>
+                  onSummaryChanged(summary.copyWith(chapters: chapters)),
+            ),
           ],
           if (summary.tags.isNotEmpty) ...[
             const SizedBox(height: 18),
@@ -333,19 +544,39 @@ class _SummaryBlock extends StatelessWidget {
           ],
           if (summary.actionItems.isNotEmpty) ...[
             const SizedBox(height: 20),
-            _ActionItemsTable(items: summary.actionItems),
+            _ActionItemsTable(
+              items: summary.actionItems,
+              transcript: transcript,
+              onChanged: (items) =>
+                  onSummaryChanged(summary.copyWith(actionItems: items)),
+            ),
           ],
           if (summary.decisions.isNotEmpty) ...[
             const SizedBox(height: 20),
-            _DecisionsTable(decisions: summary.decisions),
+            _DecisionsTable(
+              decisions: summary.decisions,
+              transcript: transcript,
+              onChanged: (decisions) =>
+                  onSummaryChanged(summary.copyWith(decisions: decisions)),
+            ),
           ],
           if (summary.openQuestions.isNotEmpty) ...[
             const SizedBox(height: 20),
-            _OpenQuestionsTable(questions: summary.openQuestions),
+            _OpenQuestionsTable(
+              questions: summary.openQuestions,
+              transcript: transcript,
+              onChanged: (questions) =>
+                  onSummaryChanged(summary.copyWith(openQuestions: questions)),
+            ),
           ],
           if (summary.followUpSuggestions.isNotEmpty) ...[
             const SizedBox(height: 20),
-            _FollowUpTable(suggestions: summary.followUpSuggestions),
+            _FollowUpTable(
+              suggestions: summary.followUpSuggestions,
+              onChanged: (suggestions) => onSummaryChanged(
+                summary.copyWith(followUpSuggestions: suggestions),
+              ),
+            ),
           ],
         ],
       ),
@@ -354,9 +585,15 @@ class _SummaryBlock extends StatelessWidget {
 }
 
 class _TopicCards extends StatelessWidget {
-  const _TopicCards({required this.chapters});
+  const _TopicCards({
+    required this.chapters,
+    required this.transcript,
+    required this.onChanged,
+  });
 
   final List<SummaryChapter> chapters;
+  final List<TranscriptSegment> transcript;
+  final Future<void> Function(List<SummaryChapter> chapters) onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -379,7 +616,12 @@ class _TopicCards extends StatelessWidget {
                   for (final chapter in chapters)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: _TopicCard(chapter: chapter),
+                      child: _TopicCard(
+                        chapter: chapter,
+                        transcript: transcript,
+                        onChanged: (updated) =>
+                            _replaceChapter(chapter, updated),
+                      ),
                     ),
                 ],
               );
@@ -392,7 +634,11 @@ class _TopicCards extends StatelessWidget {
                 for (final chapter in chapters)
                   SizedBox(
                     width: (constraints.maxWidth - 12) / 2,
-                    child: _TopicCard(chapter: chapter),
+                    child: _TopicCard(
+                      chapter: chapter,
+                      transcript: transcript,
+                      onChanged: (updated) => _replaceChapter(chapter, updated),
+                    ),
                   ),
               ],
             );
@@ -401,22 +647,40 @@ class _TopicCards extends StatelessWidget {
       ],
     );
   }
+
+  Future<void> _replaceChapter(
+    SummaryChapter oldChapter,
+    SummaryChapter updated,
+  ) {
+    return onChanged([
+      for (final chapter in chapters)
+        if (chapter.id == oldChapter.id) updated else chapter,
+    ]);
+  }
 }
 
 class _TopicCard extends StatelessWidget {
-  const _TopicCard({required this.chapter});
+  const _TopicCard({
+    required this.chapter,
+    required this.transcript,
+    required this.onChanged,
+  });
 
   final SummaryChapter chapter;
+  final List<TranscriptSegment> transcript;
+  final Future<void> Function(SummaryChapter chapter) onChanged;
 
   @override
   Widget build(BuildContext context) {
+    final references = _referenceLabels(chapter.evidenceSegmentIds, transcript);
     return _BulletCard(
       title: chapter.title,
       icon: Icons.topic_outlined,
-      text: chapter.summary,
-      footer: chapter.evidenceSegmentIds.isEmpty
+      text: _replaceEvidenceIds(chapter.summary, transcript),
+      footer: references.isEmpty
           ? null
-          : 'Evidence: ${chapter.evidenceSegmentIds.take(4).join(', ')}',
+          : 'References: ${references.join(', ')}',
+      onEdit: () => _editChapter(context, chapter, onChanged),
     );
   }
 }
@@ -427,12 +691,14 @@ class _BulletCard extends StatelessWidget {
     required this.icon,
     required this.text,
     this.footer,
+    this.onEdit,
   });
 
   final String title;
   final IconData icon;
   final String text;
   final String? footer;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -465,6 +731,12 @@ class _BulletCard extends StatelessWidget {
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
+              if (onEdit != null)
+                IconButton(
+                  tooltip: 'Edit',
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                ),
             ],
           ),
           const SizedBox(height: 10),
@@ -534,152 +806,41 @@ class _BulletCard extends StatelessWidget {
   }
 }
 
-class _TranscriptToggle extends StatelessWidget {
-  const _TranscriptToggle({
-    required this.status,
-    required this.segmentCount,
-    required this.showTranscript,
-    required this.onToggle,
-  });
-
-  final MeetingStatus? status;
-  final int segmentCount;
-  final bool showTranscript;
-  final VoidCallback? onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasTranscript = segmentCount > 0;
-    final message = hasTranscript
-        ? '$segmentCount transcript segments available'
-        : switch (status) {
-            MeetingStatus.recording || MeetingStatus.paused =>
-              'Transcript chunks will appear after local transcription.',
-            MeetingStatus.transcribing => 'Local transcription is running.',
-            MeetingStatus.failed =>
-              'Transcription failed. Check recording diagnostics.',
-            MeetingStatus.ready => 'No transcript was produced.',
-            _ => 'Start recording to capture mic audio locally.',
-          };
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF111419),
-          border: Border.all(color: const Color(0xFF252B33)),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              hasTranscript ? Icons.article_outlined : Icons.info_outline,
-              size: 18,
-              color: const Color(0xFF9AA4B2),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                message,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: const Color(0xFFB8C0CC)),
-              ),
-            ),
-            OutlinedButton.icon(
-              onPressed: onToggle,
-              icon: Icon(
-                showTranscript
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-                size: 18,
-              ),
-              label: Text(
-                showTranscript ? 'Hide transcript' : 'Show transcript',
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ChatToggle extends StatelessWidget {
-  const _ChatToggle({
-    required this.messageCount,
-    required this.showChat,
-    required this.onToggle,
-  });
-
-  final int messageCount;
-  final bool showChat;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF111419),
-          border: Border.all(color: const Color(0xFF252B33)),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.forum_outlined,
-              size: 18,
-              color: Theme.of(context).colorScheme.secondary,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                messageCount == 0
-                    ? 'Ask questions about this meeting'
-                    : '$messageCount chat messages',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: const Color(0xFFB8C0CC)),
-              ),
-            ),
-            FilledButton.tonalIcon(
-              onPressed: onToggle,
-              icon: Icon(
-                showChat ? Icons.close_fullscreen : Icons.chat_bubble_outline,
-                size: 18,
-              ),
-              label: Text(showChat ? 'Close chat' : 'Open chat'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _ActionItemsTable extends StatelessWidget {
-  const _ActionItemsTable({required this.items});
+  const _ActionItemsTable({
+    required this.items,
+    required this.transcript,
+    required this.onChanged,
+  });
 
   final List<ActionItem> items;
+  final List<TranscriptSegment> transcript;
+  final Future<void> Function(List<ActionItem> items) onChanged;
 
   @override
   Widget build(BuildContext context) {
     return _SummaryTable(
       title: 'Action items',
       icon: Icons.check_circle_outline,
-      columns: const ['Task', 'Owner', 'Due', 'Status'],
+      columns: const ['Task', 'Owner', 'Due', 'Status', 'Reference', 'Edit'],
       rows: items
-          .map(
-            (item) => [
-              item.text,
-              item.owner ?? 'Unassigned',
-              item.dueDate ?? '-',
-              item.done ? 'Done' : 'Open',
-            ],
+          .mapIndexed(
+            (index, item) => _SummaryTableRow(
+              values: [
+                _replaceEvidenceIds(item.text, transcript),
+                item.owner ?? 'Unassigned',
+                item.dueDate ?? '-',
+                item.done ? 'Done' : 'Open',
+                _referenceLabels(
+                  item.evidenceSegmentIds,
+                  transcript,
+                ).firstOrDash,
+              ],
+              onEdit: () => _editActionItem(context, item, (updated) {
+                final next = [...items]..[index] = updated;
+                return onChanged(next);
+              }),
+            ),
           )
           .toList(growable: false),
     );
@@ -687,57 +848,120 @@ class _ActionItemsTable extends StatelessWidget {
 }
 
 class _DecisionsTable extends StatelessWidget {
-  const _DecisionsTable({required this.decisions});
+  const _DecisionsTable({
+    required this.decisions,
+    required this.transcript,
+    required this.onChanged,
+  });
 
   final List<DecisionItem> decisions;
+  final List<TranscriptSegment> transcript;
+  final Future<void> Function(List<DecisionItem> decisions) onChanged;
 
   @override
   Widget build(BuildContext context) {
     return _SummaryTable(
       title: 'Decisions',
       icon: Icons.gavel_outlined,
-      columns: const ['Decision', 'Rationale'],
+      columns: const ['Decision', 'Rationale', 'Reference', 'Edit'],
       rows: decisions
-          .map((decision) => [decision.text, decision.rationale ?? '-'])
+          .mapIndexed(
+            (index, decision) => _SummaryTableRow(
+              values: [
+                _replaceEvidenceIds(decision.text, transcript),
+                _replaceEvidenceIds(decision.rationale ?? '-', transcript),
+                _referenceLabels(
+                  decision.evidenceSegmentIds,
+                  transcript,
+                ).firstOrDash,
+              ],
+              onEdit: () => _editDecision(context, decision, (updated) {
+                final next = [...decisions]..[index] = updated;
+                return onChanged(next);
+              }),
+            ),
+          )
           .toList(growable: false),
     );
   }
 }
 
 class _OpenQuestionsTable extends StatelessWidget {
-  const _OpenQuestionsTable({required this.questions});
+  const _OpenQuestionsTable({
+    required this.questions,
+    required this.transcript,
+    required this.onChanged,
+  });
 
   final List<OpenQuestion> questions;
+  final List<TranscriptSegment> transcript;
+  final Future<void> Function(List<OpenQuestion> questions) onChanged;
 
   @override
   Widget build(BuildContext context) {
     return _SummaryTable(
       title: 'Open questions',
       icon: Icons.help_outline,
-      columns: const ['Question', 'Owner'],
+      columns: const ['Question', 'Owner', 'Reference', 'Edit'],
       rows: questions
-          .map((question) => [question.text, question.owner ?? 'Unassigned'])
+          .mapIndexed(
+            (index, question) => _SummaryTableRow(
+              values: [
+                _replaceEvidenceIds(question.text, transcript),
+                question.owner ?? 'Unassigned',
+                _referenceLabels(
+                  question.evidenceSegmentIds,
+                  transcript,
+                ).firstOrDash,
+              ],
+              onEdit: () => _editOpenQuestion(context, question, (updated) {
+                final next = [...questions]..[index] = updated;
+                return onChanged(next);
+              }),
+            ),
+          )
           .toList(growable: false),
     );
   }
 }
 
 class _FollowUpTable extends StatelessWidget {
-  const _FollowUpTable({required this.suggestions});
+  const _FollowUpTable({required this.suggestions, required this.onChanged});
 
   final List<String> suggestions;
+  final Future<void> Function(List<String> suggestions) onChanged;
 
   @override
   Widget build(BuildContext context) {
     return _SummaryTable(
       title: 'Follow-ups',
       icon: Icons.trending_up,
-      columns: const ['Suggestion'],
-      rows: suggestions
-          .map((suggestion) => [suggestion])
+      columns: const ['Suggestion', 'Edit'],
+      rows: suggestions.indexed
+          .map(
+            (entry) => _SummaryTableRow(
+              values: [entry.$2],
+              onEdit: () => _editLongText(
+                context: context,
+                title: 'Edit follow-up',
+                initialValue: entry.$2,
+                onSaved: (value) {
+                  final next = [...suggestions]..[entry.$1] = value;
+                  return onChanged(next);
+                },
+              ),
+            ),
+          )
           .toList(growable: false),
     );
   }
+}
+
+class _SummaryTableRow {
+  const _SummaryTableRow({required this.values, this.onEdit});
+
+  final List<String> values;
+  final VoidCallback? onEdit;
 }
 
 class _SummaryTable extends StatelessWidget {
@@ -751,7 +975,7 @@ class _SummaryTable extends StatelessWidget {
   final String title;
   final IconData icon;
   final List<String> columns;
-  final List<List<String>> rows;
+  final List<_SummaryTableRow> rows;
 
   @override
   Widget build(BuildContext context) {
@@ -808,7 +1032,7 @@ class _SummaryTable extends StatelessWidget {
                 for (final row in rows)
                   DataRow(
                     cells: [
-                      for (final value in row)
+                      for (final value in row.values)
                         DataCell(
                           ConstrainedBox(
                             constraints: const BoxConstraints(
@@ -816,6 +1040,14 @@ class _SummaryTable extends StatelessWidget {
                               maxWidth: 360,
                             ),
                             child: Text(value),
+                          ),
+                        ),
+                      if (row.onEdit != null)
+                        DataCell(
+                          IconButton(
+                            tooltip: 'Edit',
+                            onPressed: row.onEdit,
+                            icon: const Icon(Icons.edit_outlined, size: 18),
                           ),
                         ),
                     ],
@@ -829,66 +1061,688 @@ class _SummaryTable extends StatelessWidget {
   }
 }
 
-class _TranscriptBlock extends StatelessWidget {
-  const _TranscriptBlock({required this.segments});
+Future<void> _editLongText({
+  required BuildContext context,
+  required String title,
+  required String initialValue,
+  required Future<void> Function(String value) onSaved,
+}) async {
+  final controller = TextEditingController(text: initialValue);
+  final value = await showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: SizedBox(
+        width: 520,
+        child: TextField(
+          controller: controller,
+          autofocus: true,
+          minLines: 4,
+          maxLines: 10,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
+  controller.dispose();
+  if (value != null) {
+    await onSaved(value);
+  }
+}
 
+Future<void> _editSummaryDetails({
+  required BuildContext context,
+  required MeetingSummary summary,
+  required Future<void> Function(MeetingSummary summary) onSaved,
+}) async {
+  final titleController = TextEditingController(text: summary.generatedTitle);
+  final tagsController = TextEditingController(text: summary.tags.join(', '));
+  final updated = await showDialog<MeetingSummary>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Edit summary details'),
+      content: SizedBox(
+        width: 520,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Generated title',
+                prefixIcon: Icon(Icons.title),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: tagsController,
+              decoration: const InputDecoration(
+                labelText: 'Tags',
+                hintText: 'budget, roadmap, hiring',
+                prefixIcon: Icon(Icons.sell_outlined),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final title = titleController.text.trim();
+            final tags = tagsController.text
+                .split(',')
+                .map((tag) => tag.trim())
+                .where((tag) => tag.isNotEmpty)
+                .toList(growable: false);
+            Navigator.of(context).pop(
+              summary.copyWith(
+                generatedTitle: title.isEmpty ? summary.generatedTitle : title,
+                tags: tags,
+              ),
+            );
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
+  titleController.dispose();
+  tagsController.dispose();
+  if (updated != null) {
+    await onSaved(updated);
+  }
+}
+
+Future<void> _editChapter(
+  BuildContext context,
+  SummaryChapter chapter,
+  Future<void> Function(SummaryChapter chapter) onSaved,
+) async {
+  final titleController = TextEditingController(text: chapter.title);
+  final summaryController = TextEditingController(text: chapter.summary);
+  final updated = await showDialog<SummaryChapter>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Edit topic'),
+      content: SizedBox(
+        width: 560,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Title'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: summaryController,
+              minLines: 4,
+              maxLines: 10,
+              decoration: const InputDecoration(
+                labelText: 'Bullet points',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(
+            chapter.copyWith(
+              title: titleController.text.trim().isEmpty
+                  ? chapter.title
+                  : titleController.text.trim(),
+              summary: summaryController.text.trim(),
+            ),
+          ),
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
+  titleController.dispose();
+  summaryController.dispose();
+  if (updated != null) {
+    await onSaved(updated);
+  }
+}
+
+Future<void> _editActionItem(
+  BuildContext context,
+  ActionItem item,
+  Future<void> Function(ActionItem item) onSaved,
+) async {
+  final taskController = TextEditingController(text: item.text);
+  final ownerController = TextEditingController(text: item.owner ?? '');
+  final dueController = TextEditingController(text: item.dueDate ?? '');
+  var done = item.done;
+  final updated = await showDialog<ActionItem>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setDialogState) => AlertDialog(
+        title: const Text('Edit action item'),
+        content: SizedBox(
+          width: 500,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: taskController,
+                autofocus: true,
+                minLines: 1,
+                maxLines: 4,
+                decoration: const InputDecoration(labelText: 'Task'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: ownerController,
+                decoration: const InputDecoration(labelText: 'Owner'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: dueController,
+                decoration: const InputDecoration(labelText: 'Due'),
+              ),
+              CheckboxListTile(
+                value: done,
+                onChanged: (value) =>
+                    setDialogState(() => done = value ?? false),
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Done'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(
+              item.copyWith(
+                text: taskController.text.trim(),
+                owner: ownerController.text.trim().isEmpty
+                    ? null
+                    : ownerController.text.trim(),
+                dueDate: dueController.text.trim().isEmpty
+                    ? null
+                    : dueController.text.trim(),
+                done: done,
+              ),
+            ),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    ),
+  );
+  taskController.dispose();
+  ownerController.dispose();
+  dueController.dispose();
+  if (updated != null && updated.text.trim().isNotEmpty) {
+    await onSaved(updated);
+  }
+}
+
+Future<void> _editDecision(
+  BuildContext context,
+  DecisionItem decision,
+  Future<void> Function(DecisionItem decision) onSaved,
+) async {
+  final textController = TextEditingController(text: decision.text);
+  final rationaleController = TextEditingController(
+    text: decision.rationale ?? '',
+  );
+  final updated = await showDialog<DecisionItem>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Edit decision'),
+      content: SizedBox(
+        width: 520,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: textController,
+              autofocus: true,
+              minLines: 1,
+              maxLines: 4,
+              decoration: const InputDecoration(labelText: 'Decision'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: rationaleController,
+              minLines: 2,
+              maxLines: 6,
+              decoration: const InputDecoration(labelText: 'Rationale'),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(
+            decision.copyWith(
+              text: textController.text.trim(),
+              rationale: rationaleController.text.trim().isEmpty
+                  ? null
+                  : rationaleController.text.trim(),
+            ),
+          ),
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
+  textController.dispose();
+  rationaleController.dispose();
+  if (updated != null && updated.text.trim().isNotEmpty) {
+    await onSaved(updated);
+  }
+}
+
+Future<void> _editOpenQuestion(
+  BuildContext context,
+  OpenQuestion question,
+  Future<void> Function(OpenQuestion question) onSaved,
+) async {
+  final textController = TextEditingController(text: question.text);
+  final ownerController = TextEditingController(text: question.owner ?? '');
+  final updated = await showDialog<OpenQuestion>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Edit open question'),
+      content: SizedBox(
+        width: 500,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: textController,
+              autofocus: true,
+              minLines: 1,
+              maxLines: 4,
+              decoration: const InputDecoration(labelText: 'Question'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ownerController,
+              decoration: const InputDecoration(labelText: 'Owner'),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(
+            question.copyWith(
+              text: textController.text.trim(),
+              owner: ownerController.text.trim().isEmpty
+                  ? null
+                  : ownerController.text.trim(),
+            ),
+          ),
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
+  textController.dispose();
+  ownerController.dispose();
+  if (updated != null && updated.text.trim().isNotEmpty) {
+    await onSaved(updated);
+  }
+}
+
+class _TranscriptBlock extends ConsumerWidget {
+  const _TranscriptBlock({
+    required this.meetingId,
+    required this.status,
+    required this.segments,
+  });
+
+  final String meetingId;
+  final MeetingStatus? status;
   final List<TranscriptSegment> segments;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return _Section(
-      title: 'Live transcript',
+      title: 'Transcript',
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final segment in segments)
-            Align(
-              alignment: segment.source == AudioSourceKind.mic
-                  ? Alignment.centerRight
-                  : Alignment.centerLeft,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 680),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(vertical: 5),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: segment.source == AudioSourceKind.mic
-                        ? Theme.of(
-                            context,
-                          ).colorScheme.primary.withValues(alpha: 0.14)
-                        : const Color(0xFF1D2229),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF2B333D)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${segment.speakerLabel ?? segment.source.name} · ${transcriptTime(segment.startMs)}',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: const Color(0xFF9AA4B2),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(segment.text),
-                    ],
-                  ),
+          _SpeakerToolbar(
+            meetingId: meetingId,
+            segments: segments,
+            onRename: (oldLabel, newLabel) => ref
+                .read(recordingControllerProvider.notifier)
+                .renameSpeaker(
+                  meetingId: meetingId,
+                  oldLabel: oldLabel,
+                  newLabel: newLabel,
+                ),
+            onRegenerateSummary: () => ref
+                .read(recordingControllerProvider.notifier)
+                .regenerateSummary(meetingId),
+          ),
+          const SizedBox(height: 12),
+          if (segments.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF111419),
+                border: Border.all(color: const Color(0xFF252B33)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                switch (status) {
+                  MeetingStatus.recording || MeetingStatus.paused =>
+                    'Transcript chunks will appear while the meeting is recorded.',
+                  MeetingStatus.transcribing =>
+                    'Local transcription is running.',
+                  _ => 'No transcript available yet.',
+                },
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: const Color(0xFF9AA4B2),
                 ),
               ),
-            ),
+            )
+          else
+            for (final segment in segments)
+              Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF111419),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF2B333D)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 76,
+                      child: Text(
+                        transcriptTime(segment.startMs),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: const Color(0xFF9AA4B2),
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _speakerName(segment),
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            segment.text,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: const Color(0xFFE7EAEE),
+                                  height: 1.45,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
         ],
       ),
     );
   }
 }
 
+String _speakerName(TranscriptSegment segment) {
+  final label = segment.speakerLabel?.trim();
+  if (label != null && label.isNotEmpty) {
+    return label;
+  }
+  return switch (segment.source) {
+    AudioSourceKind.mic => 'Speaker 1',
+    AudioSourceKind.system => 'Speaker 2',
+    AudioSourceKind.mixed => 'Speaker 1',
+  };
+}
+
+List<String> _referenceLabels(
+  List<String> ids,
+  List<TranscriptSegment> transcript,
+) {
+  if (ids.isEmpty || transcript.isEmpty) {
+    return const [];
+  }
+  final byId = {for (final segment in transcript) segment.id: segment};
+  final labels = <String>[];
+  for (final id in ids) {
+    final segment = byId[id];
+    if (segment == null) {
+      continue;
+    }
+    labels.add('${transcriptTime(segment.startMs)} · ${_speakerName(segment)}');
+    if (labels.length == 4) {
+      break;
+    }
+  }
+  return labels;
+}
+
+String _replaceEvidenceIds(String value, List<TranscriptSegment> transcript) {
+  if (value.isEmpty || transcript.isEmpty) {
+    return value;
+  }
+  final byId = {for (final segment in transcript) segment.id: segment};
+  return value.replaceAllMapped(RegExp(r'\[([^\]]+)\]'), (match) {
+    final ids = match
+        .group(1)!
+        .split(RegExp(r'[\s,;]+'))
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty);
+    final references = <String>[];
+    for (final id in ids) {
+      final segment = byId[id];
+      if (segment != null) {
+        references.add(
+          '${transcriptTime(segment.startMs)} · ${_speakerName(segment)}',
+        );
+      }
+    }
+    if (references.isEmpty) {
+      return match.group(0) ?? '';
+    }
+    return '[${references.join(', ')}]';
+  });
+}
+
+extension on List<String> {
+  String get firstOrDash => isEmpty ? '-' : first;
+}
+
+class _SpeakerToolbar extends StatelessWidget {
+  const _SpeakerToolbar({
+    required this.meetingId,
+    required this.segments,
+    required this.onRename,
+    required this.onRegenerateSummary,
+  });
+
+  final String meetingId;
+  final List<TranscriptSegment> segments;
+  final Future<void> Function(String oldLabel, String newLabel) onRename;
+  final Future<void> Function() onRegenerateSummary;
+
+  @override
+  Widget build(BuildContext context) {
+    final labels =
+        segments
+            .map((segment) => segment.speakerLabel?.trim())
+            .whereType<String>()
+            .where((label) => label.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1217),
+        border: Border.all(color: const Color(0xFF252B33)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 560;
+          final chips = Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final label in labels)
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: compact ? constraints.maxWidth : 180,
+                  ),
+                  child: ActionChip(
+                    avatar: const Icon(Icons.person_outline, size: 16),
+                    label: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onPressed: () => _renameSpeaker(context, label),
+                  ),
+                ),
+              if (labels.isEmpty)
+                Text(
+                  'No speakers assigned yet.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF9AA4B2),
+                  ),
+                ),
+            ],
+          );
+          final actions = Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: compact ? WrapAlignment.end : WrapAlignment.start,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: segments.isEmpty ? null : onRegenerateSummary,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Regenerate summary'),
+              ),
+            ],
+          );
+
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                chips,
+                const SizedBox(height: 10),
+                Align(alignment: Alignment.centerRight, child: actions),
+              ],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: chips),
+              const SizedBox(width: 10),
+              actions,
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _renameSpeaker(BuildContext context, String label) async {
+    final controller = TextEditingController(text: label);
+    final newLabel = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rename speaker'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Speaker name',
+            prefixIcon: Icon(Icons.person_outline),
+          ),
+          onSubmitted: (value) => Navigator.of(context).pop(value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (newLabel == null) {
+      return;
+    }
+    await onRename(label, newLabel);
+  }
+}
+
 class _ChatBlock extends StatelessWidget {
   const _ChatBlock({
     required this.messages,
+    required this.transcript,
     required this.controller,
     required this.onSend,
   });
 
   final List<ChatMessage> messages;
+  final List<TranscriptSegment> transcript;
   final TextEditingController controller;
   final Future<void> Function() onSend;
 
@@ -928,16 +1782,33 @@ class _ChatBlock extends StatelessWidget {
                     border: Border.all(color: const Color(0xFF2B333D)),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(
+                  child: _ChatMessageText(
                     message.isStreaming && message.content.isEmpty
                         ? 'Thinking...'
-                        : message.content,
+                        : _replaceEvidenceIds(message.content, transcript),
                   ),
                 ),
               ),
           const SizedBox(height: 12),
           _ChatComposer(controller: controller, onSend: onSend),
         ],
+      ),
+    );
+  }
+}
+
+class _ChatMessageText extends StatelessWidget {
+  const _ChatMessageText(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        color: const Color(0xFFE7EAEE),
+        height: 1.42,
       ),
     );
   }

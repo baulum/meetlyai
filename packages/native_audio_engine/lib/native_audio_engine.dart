@@ -165,6 +165,10 @@ class NativeAudioEngine {
     return NativeAudioEnginePlatform.instance.resumeCapture();
   }
 
+  Future<List<NativeAudioAsset>> flushTranscriptionChunks() {
+    return NativeAudioEnginePlatform.instance.flushTranscriptionChunks();
+  }
+
   Future<List<NativeAudioAsset>> stopCapture() {
     return NativeAudioEnginePlatform.instance.stopCapture();
   }

@@ -60,26 +60,24 @@ class GeminiLlmService implements LlmService {
   Stream<String> streamMeetingAnswer(MeetingChatRequest request) async* {
     final apiKey = await _requiredApiKey();
     final model = await _configuredModel();
+    final payload = _chatPayload(request);
     final Response<ResponseBody> response;
     try {
       response = await _dio.post<ResponseBody>(
         '/v1beta/models/$model:streamGenerateContent',
         queryParameters: {'key': apiKey, 'alt': 'sse'},
         options: Options(responseType: ResponseType.stream),
-        data: {
-          'contents': [
-            {
-              'role': 'user',
-              'parts': [
-                {'text': _chatPrompt(request)},
-              ],
-            },
-          ],
-          'generationConfig': {'temperature': 0.25},
-        },
+        data: payload,
       );
     } on DioException catch (error) {
-      throw StateError(_dioErrorMessage('Gemini chat failed', error));
+      final fallback = await _generateChatAnswer(
+        apiKey: apiKey,
+        model: model,
+        payload: payload,
+        previousError: error,
+      );
+      yield fallback;
+      return;
     }
 
     final body = response.data;
@@ -104,6 +102,34 @@ class GeminiLlmService implements LlmService {
       if (text.isNotEmpty) {
         yield text;
       }
+    }
+  }
+
+  Future<String> _generateChatAnswer({
+    required String apiKey,
+    required String model,
+    required Map<String, Object?> payload,
+    required DioException previousError,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, Object?>>(
+        '/v1beta/models/$model:generateContent',
+        queryParameters: {'key': apiKey},
+        data: payload,
+      );
+      final text = _extractText(response.data).trim();
+      if (text.isNotEmpty) {
+        return text;
+      }
+      throw StateError('Gemini returned an empty chat response.');
+    } on DioException catch (fallbackError) {
+      throw StateError(
+        [
+          _dioErrorMessage('Gemini chat failed', fallbackError),
+          'Streaming fallback reason:',
+          _dioErrorMessage('Gemini streaming failed', previousError),
+        ].join('\n'),
+      );
     }
   }
 
@@ -146,12 +172,27 @@ class GeminiLlmService implements LlmService {
     };
   }
 
+  Map<String, Object?> _chatPayload(MeetingChatRequest request) {
+    return {
+      'contents': [
+        {
+          'role': 'user',
+          'parts': [
+            {'text': _chatPrompt(request)},
+          ],
+        },
+      ],
+      'generationConfig': {'temperature': 0.25},
+    };
+  }
+
   String _dioErrorMessage(String prefix, DioException error) {
     final status = error.response?.statusCode;
     final body = error.response?.data;
     final bodyText = switch (body) {
       null => '',
       final String value => value,
+      final ResponseBody value => 'Stream response body (${value.statusCode})',
       _ => const JsonEncoder.withIndent('  ').convert(body),
     };
     return [
@@ -194,7 +235,10 @@ class GeminiLlmService implements LlmService {
             AudioSourceKind.system => 'System',
             AudioSourceKind.mixed => 'Mixed',
           };
-          return '[${segment.id}] ${_time(segment.startMs)}-$source: '
+          final speaker = segment.speakerLabel?.trim().isNotEmpty == true
+              ? segment.speakerLabel!.trim()
+              : source;
+          return '[${segment.id}] ${_time(segment.startMs)}-$speaker/$source: '
               '${segment.text}';
         })
         .join('\n');
@@ -204,12 +248,14 @@ Du bist MeetlyAI. Analysiere dieses Meeting und antworte ausschliesslich als JSO
 
 Ziele:
 - Erzeuge einen praegnanten Meeting-Titel.
-- Schreibe die Zusammenfassung als gut scanbare Stichpunkte, nicht als Fliesstext.
+- Schreibe die Zusammenfassung als gut scanbare Stichpunkte, nicht als Fliesstext. Filter unnötige Sachen raus.
 - Gib "overview" als 4 bis 7 Bulletpoints aus. Jeder Bulletpoint beginnt mit "- ".
 - Teile das Meeting in sinnvolle Themen/Kapitel auf. Jedes Kapitel hat eine klare Ueberschrift.
 - Gib "chapters[].summary" ebenfalls als 3 bis 6 Bulletpoints aus. Jeder Bulletpoint beginnt mit "- ".
 - Themen sollen inhaltlich gruppiert sein, z.B. Ziele, technische Entscheidungen, Risiken, Budget, Timing, offene Punkte.
-- Erkenne Action Items mit Ownern, wenn erkennbar.
+- Erkenne alle Todos/Action Items mit konkreter Aufgabe, Owner, Due Date und Status, wenn erkennbar.
+- Schreibe Todos ausschliesslich in "actionItems"; diese werden in der App als editierbare Todo-Tabelle angezeigt.
+- Falls kein Owner, kein Due Date oder kein Status genannt wird, nutze null bzw. false statt zu raten.
 - Extrahiere Entscheidungen, offene Fragen, Follow-ups und Tags.
 - Nutze evidenceSegmentIds, um Aussagen auf Transcript-Segmente zurueckzufuehren.
 - Schreibe kurz, konkret und produktiv. Keine langen Absaetze.
@@ -229,7 +275,7 @@ $transcriptText
     final context = request.transcriptContext
         .map((segment) {
           return '[${segment.id}] ${_time(segment.startMs)} '
-              '${segment.source.name}: ${segment.text}';
+              '${segment.speakerLabel ?? segment.source.name}: ${segment.text}';
         })
         .join('\n');
     final history = request.messages

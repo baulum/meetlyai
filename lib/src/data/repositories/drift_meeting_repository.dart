@@ -25,7 +25,7 @@ class DriftMeetingRepository implements MeetingRepository {
       ]);
 
     final trimmed = query.trim().toLowerCase();
-    
+
     return statement.watch().asyncMap((rows) async {
       if (trimmed.isEmpty) {
         return rows.map(_meetingFromRecord).toList(growable: false);
@@ -34,14 +34,14 @@ class DriftMeetingRepository implements MeetingRepository {
       // Filter meetings by title or summary content
       final meetings = rows.map(_meetingFromRecord).toList();
       final filtered = <Meeting>[];
-      
+
       for (final meeting in meetings) {
         // Check if title matches
         if (meeting.title.toLowerCase().contains(trimmed)) {
           filtered.add(meeting);
           continue;
         }
-        
+
         // Check if summary overview matches
         final summary = await getSummary(meeting.id);
         if (summary != null &&
@@ -53,7 +53,7 @@ class DriftMeetingRepository implements MeetingRepository {
           continue;
         }
       }
-      
+
       return filtered;
     });
   }
@@ -144,19 +144,19 @@ class DriftMeetingRepository implements MeetingRepository {
 
     // Simple substring search using LIKE - works reliably across all content
     final like = '%$trimmed%';
-    
+
     // Search in transcript segments content (case-insensitive)
-    final rows = await (_db.select(_db.transcriptSegmentRows)
-          ..where(
-            (row) =>
-                row.meetingId.equals(meetingId) &
-                row.content.like(like),
-          )
-          ..orderBy([(row) => OrderingTerm(expression: row.startMs)]))
-        .get();
-    
+    final rows =
+        await (_db.select(_db.transcriptSegmentRows)
+              ..where(
+                (row) =>
+                    row.meetingId.equals(meetingId) & row.content.like(like),
+              )
+              ..orderBy([(row) => OrderingTerm(expression: row.startMs)]))
+            .get();
+
     final results = rows.map(_segmentFromRecord).toList(growable: false);
-    
+
     // If no results found, try FTS as fallback for better matching
     if (results.isEmpty) {
       final ftsQuery = _ftsQuery(trimmed);
@@ -180,7 +180,7 @@ class DriftMeetingRepository implements MeetingRepository {
           final ids = ftsRows
               .map((row) => row.read<String>('segment_id'))
               .toList(growable: false);
-          
+
           if (ids.isNotEmpty) {
             final segments = await (_db.select(
               _db.transcriptSegmentRows,
@@ -197,7 +197,7 @@ class DriftMeetingRepository implements MeetingRepository {
         }
       }
     }
-    
+
     return results;
   }
 
@@ -304,6 +304,48 @@ class DriftMeetingRepository implements MeetingRepository {
   }
 
   @override
+  Future<void> updateSpeakerLabel({
+    required String meetingId,
+    required String oldLabel,
+    required String newLabel,
+  }) {
+    return (_db.update(_db.transcriptSegmentRows)..where(
+          (row) =>
+              row.meetingId.equals(meetingId) &
+              row.speakerLabel.equals(oldLabel),
+        ))
+        .write(TranscriptSegmentRowsCompanion(speakerLabel: Value(newLabel)));
+  }
+
+  @override
+  Future<void> assignDefaultSpeakerLabels(String meetingId) async {
+    final rows = await (_db.select(
+      _db.transcriptSegmentRows,
+    )..where((row) => row.meetingId.equals(meetingId))).get();
+    await _db.batch((batch) {
+      for (final row in rows) {
+        final existing = row.speakerLabel?.trim();
+        if (existing != null &&
+            existing.isNotEmpty &&
+            !existing.startsWith('Mic') &&
+            !existing.startsWith('System')) {
+          continue;
+        }
+        final label = switch (_enumByName(AudioSourceKind.values, row.source)) {
+          AudioSourceKind.mic => 'Speaker 1',
+          AudioSourceKind.system => 'Speaker 2',
+          AudioSourceKind.mixed => 'Speaker 1',
+        };
+        batch.update(
+          _db.transcriptSegmentRows,
+          TranscriptSegmentRowsCompanion(speakerLabel: Value(label)),
+          where: (table) => table.id.equals(row.id),
+        );
+      }
+    });
+  }
+
+  @override
   Future<void> saveSummary(MeetingSummary summary) async {
     await _db.transaction(() async {
       await _db
@@ -354,6 +396,22 @@ class DriftMeetingRepository implements MeetingRepository {
           ),
           mode: InsertMode.insertOrReplace,
         );
+        batch.insertAll(
+          _db.todoRows,
+          summary.actionItems.indexed.map(
+            (entry) => TodoRowsCompanion(
+              id: Value(_summaryTodoId(summary.meetingId, entry.$2.id)),
+              meetingId: Value(summary.meetingId),
+              content: Value(entry.$2.text),
+              done: Value(entry.$2.done),
+              createdAt: Value(summary.createdAt),
+              dueDate: Value(_parseDueDate(entry.$2.dueDate)),
+              notes: Value(entry.$2.owner),
+              sortOrder: Value(entry.$1),
+            ),
+          ),
+          mode: InsertMode.insertOrReplace,
+        );
       });
 
       final meeting = await getMeeting(summary.meetingId);
@@ -388,6 +446,74 @@ class DriftMeetingRepository implements MeetingRepository {
   }
 
   @override
+  Stream<List<Todo>> watchTodos({String? meetingId}) {
+    final statement = _db.select(_db.todoRows)
+      ..orderBy([
+        (row) => OrderingTerm(expression: row.done, mode: OrderingMode.asc),
+        (row) =>
+            OrderingTerm(expression: row.sortOrder, mode: OrderingMode.asc),
+        (row) =>
+            OrderingTerm(expression: row.createdAt, mode: OrderingMode.desc),
+      ]);
+
+    if (meetingId != null) {
+      statement.where((row) => row.meetingId.equals(meetingId));
+    }
+
+    return statement.watch().map(
+      (rows) => rows.map(_todoFromRecord).toList(growable: false),
+    );
+  }
+
+  @override
+  Future<List<Todo>> getTodos({String? meetingId}) async {
+    final statement = _db.select(_db.todoRows)
+      ..orderBy([
+        (row) => OrderingTerm(expression: row.done, mode: OrderingMode.asc),
+        (row) =>
+            OrderingTerm(expression: row.sortOrder, mode: OrderingMode.asc),
+        (row) =>
+            OrderingTerm(expression: row.createdAt, mode: OrderingMode.desc),
+      ]);
+
+    if (meetingId != null) {
+      statement.where((row) => row.meetingId.equals(meetingId));
+    }
+
+    final rows = await statement.get();
+    return rows.map(_todoFromRecord).toList(growable: false);
+  }
+
+  @override
+  Future<Todo> createTodo(Todo todo) {
+    final newTodo = todo.copyWith(id: _uuid.v7(), createdAt: DateTime.now());
+    return upsertTodo(newTodo).then((_) => newTodo);
+  }
+
+  @override
+  Future<void> upsertTodo(Todo todo) {
+    return _db
+        .into(_db.todoRows)
+        .insertOnConflictUpdate(
+          TodoRowsCompanion(
+            id: Value(todo.id),
+            meetingId: Value(todo.meetingId),
+            content: Value(todo.content),
+            done: Value(todo.done),
+            createdAt: Value(todo.createdAt),
+            dueDate: Value(todo.dueDate),
+            notes: Value(todo.notes),
+            sortOrder: Value(todo.sortOrder),
+          ),
+        );
+  }
+
+  @override
+  Future<void> deleteTodo(String id) {
+    return (_db.delete(_db.todoRows)..where((row) => row.id.equals(id))).go();
+  }
+
+  @override
   Future<void> deleteMeeting(String id) async {
     final audioAssets = await (_db.select(
       _db.audioAssetRows,
@@ -415,6 +541,9 @@ class DriftMeetingRepository implements MeetingRepository {
       )..where((row) => row.meetingId.equals(id))).go();
       await (_db.delete(
         _db.audioAssetRows,
+      )..where((row) => row.meetingId.equals(id))).go();
+      await (_db.delete(
+        _db.todoRows,
       )..where((row) => row.meetingId.equals(id))).go();
       await (_db.delete(
         _db.meetingRows,
@@ -478,12 +607,38 @@ class DriftMeetingRepository implements MeetingRepository {
     );
   }
 
+  Todo _todoFromRecord(TodoRecord record) {
+    return Todo(
+      id: record.id,
+      meetingId: record.meetingId,
+      content: record.content,
+      done: record.done,
+      createdAt: record.createdAt,
+      dueDate: record.dueDate,
+      notes: record.notes,
+      sortOrder: record.sortOrder,
+    );
+  }
+
   List<String> _decodeStringList(String value) {
     final decoded = jsonDecode(value);
     if (decoded is List) {
       return decoded.whereType<String>().toList(growable: false);
     }
     return const [];
+  }
+
+  String _summaryTodoId(String meetingId, String actionItemId) {
+    final normalized = actionItemId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '-');
+    return 'summary-todo-$meetingId-$normalized';
+  }
+
+  DateTime? _parseDueDate(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    return DateTime.tryParse(trimmed);
   }
 
   T _enumByName<T extends Enum>(List<T> values, String name) {

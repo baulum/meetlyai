@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
-import 'package:window_manager/window_manager.dart';
 
 import '../domain/models/meeting_models.dart';
 import '../domain/services/audio_recorder.dart';
@@ -42,6 +41,9 @@ class RecordingController extends Notifier<RecordingUiState> {
   final _uuid = const Uuid();
   StreamSubscription<RecordingSnapshot>? _snapshotSubscription;
   StreamSubscription<AudioPcmFrame>? _pcmSubscription;
+  Timer? _chunkTranscriptionTimer;
+  bool _isTranscribingChunk = false;
+  final Set<String> _transcribedChunkPaths = {};
 
   @override
   RecordingUiState build() {
@@ -53,6 +55,7 @@ class RecordingController extends Notifier<RecordingUiState> {
     ref.onDispose(() {
       _snapshotSubscription?.cancel();
       _pcmSubscription?.cancel();
+      _chunkTranscriptionTimer?.cancel();
     });
     return const RecordingUiState();
   }
@@ -83,7 +86,7 @@ class RecordingController extends Notifier<RecordingUiState> {
           captureSystemAudio: true,
         ),
       );
-      await windowManager.minimize();
+      await _startChunkTranscription(meeting.id);
       state = state.copyWith(isBusy: false, clearError: true);
     } on Object catch (error) {
       state = state.copyWith(isBusy: false, errorMessage: error.toString());
@@ -99,9 +102,21 @@ class RecordingController extends Notifier<RecordingUiState> {
     if (snapshot.status == MeetingStatus.paused) {
       await recorder.resume();
       await _updateMeetingStatus(snapshot.meetingId, MeetingStatus.recording);
+      state = state.copyWith(
+        snapshot: snapshot.copyWith(
+          status: MeetingStatus.recording,
+          statusMessage: 'Recording locally',
+        ),
+      );
     } else if (snapshot.status == MeetingStatus.recording) {
       await recorder.pause();
       await _updateMeetingStatus(snapshot.meetingId, MeetingStatus.paused);
+      state = state.copyWith(
+        snapshot: snapshot.copyWith(
+          status: MeetingStatus.paused,
+          statusMessage: 'Paused',
+        ),
+      );
     }
   }
 
@@ -117,6 +132,8 @@ class RecordingController extends Notifier<RecordingUiState> {
         snapshot.meetingId,
         MeetingStatus.transcribing,
       );
+      _chunkTranscriptionTimer?.cancel();
+      await _flushTranscriptionChunks(snapshot.meetingId, force: true);
       final assets = await ref.read(audioRecorderProvider).stop();
       for (final asset in assets) {
         await repository.saveAudioAsset(asset);
@@ -138,8 +155,10 @@ class RecordingController extends Notifier<RecordingUiState> {
 
       final settings = ref.read(settingsRepositoryProvider);
       final modelPath = await settings.getWhisperModelPath();
-      final language = await settings.getPreferredLanguage() ?? 'auto';
-      if (modelPath != null && modelPath.trim().isNotEmpty) {
+      if (modelPath != null &&
+          modelPath.trim().isNotEmpty &&
+          _transcribedChunkPaths.isEmpty) {
+        final language = await settings.getPreferredLanguage() ?? 'auto';
         await for (final segment
             in ref
                 .read(transcriptionEngineProvider)
@@ -175,7 +194,7 @@ class RecordingController extends Notifier<RecordingUiState> {
       }
 
       state = const RecordingUiState();
-      await windowManager.restore();
+      _transcribedChunkPaths.clear();
     } on Object catch (error) {
       await _updateMeetingStatus(snapshot.meetingId, MeetingStatus.failed);
       state = state.copyWith(isBusy: false, errorMessage: error.toString());
@@ -244,8 +263,7 @@ class RecordingController extends Notifier<RecordingUiState> {
     } on Object catch (error) {
       await repository.saveChatMessage(
         assistantMessage.copyWith(
-          content:
-              'I could not answer yet. Check your Gemini API key and network connection.\n\n$error',
+          content: 'I could not answer yet.\n\n$error',
           isStreaming: false,
         ),
       );
@@ -272,6 +290,43 @@ class RecordingController extends Notifier<RecordingUiState> {
 
   Future<void> deleteMeeting(String meetingId) {
     return ref.read(meetingRepositoryProvider).deleteMeeting(meetingId);
+  }
+
+  Future<void> assignSpeakerLabels(String meetingId) {
+    return ref
+        .read(meetingRepositoryProvider)
+        .assignDefaultSpeakerLabels(meetingId);
+  }
+
+  Future<void> renameSpeaker({
+    required String meetingId,
+    required String oldLabel,
+    required String newLabel,
+  }) {
+    final trimmed = newLabel.trim();
+    if (trimmed.isEmpty || trimmed == oldLabel) {
+      return Future.value();
+    }
+    return ref
+        .read(meetingRepositoryProvider)
+        .updateSpeakerLabel(
+          meetingId: meetingId,
+          oldLabel: oldLabel,
+          newLabel: trimmed,
+        );
+  }
+
+  Future<void> regenerateSummary(String meetingId) async {
+    final repository = ref.read(meetingRepositoryProvider);
+    final meeting = await repository.getMeeting(meetingId);
+    if (meeting == null) {
+      return;
+    }
+    final transcript = await repository.getTranscript(meetingId);
+    if (transcript.isEmpty) {
+      return;
+    }
+    await _summarize(repository, meeting, transcript);
   }
 
   Future<void> _summarize(
@@ -302,5 +357,65 @@ class RecordingController extends Notifier<RecordingUiState> {
   Future<String> _meetingDirectory(String meetingId) async {
     final docs = await getApplicationDocumentsDirectory();
     return p.join(docs.path, 'MeetlyAI', 'meetings', meetingId);
+  }
+
+  Future<void> _startChunkTranscription(String meetingId) async {
+    _chunkTranscriptionTimer?.cancel();
+    _transcribedChunkPaths.clear();
+    final seconds = await ref
+        .read(settingsRepositoryProvider)
+        .getChunkTranscriptionIntervalSeconds();
+    _chunkTranscriptionTimer = Timer.periodic(
+      Duration(seconds: seconds),
+      (_) => _flushTranscriptionChunks(meetingId),
+    );
+  }
+
+  Future<void> _flushTranscriptionChunks(
+    String meetingId, {
+    bool force = false,
+  }) async {
+    if (_isTranscribingChunk) {
+      return;
+    }
+    if (!force && state.snapshot?.status != MeetingStatus.recording) {
+      return;
+    }
+    _isTranscribingChunk = true;
+    try {
+      final settings = ref.read(settingsRepositoryProvider);
+      final modelPath = await settings.getWhisperModelPath();
+      if (modelPath == null || modelPath.trim().isEmpty) {
+        return;
+      }
+
+      final chunks = await ref
+          .read(audioRecorderProvider)
+          .flushTranscriptionChunks();
+      final freshChunks = chunks
+          .where((asset) => _transcribedChunkPaths.add(asset.path))
+          .toList(growable: false);
+      if (freshChunks.isEmpty) {
+        return;
+      }
+
+      final language = await settings.getPreferredLanguage() ?? 'auto';
+      final repository = ref.read(meetingRepositoryProvider);
+      await for (final segment
+          in ref
+              .read(transcriptionEngineProvider)
+              .transcribe(
+                TranscriptionRequest(
+                  meetingId: meetingId,
+                  audioAssets: freshChunks,
+                  modelPath: modelPath,
+                  languageCode: language,
+                ),
+              )) {
+        await repository.saveTranscriptSegment(segment);
+      }
+    } finally {
+      _isTranscribingChunk = false;
+    }
   }
 }

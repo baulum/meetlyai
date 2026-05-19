@@ -6,61 +6,53 @@ import '../chat/meeting_chat_view.dart';
 import '../recording/recording_panel.dart';
 import '../settings/settings_drawer.dart';
 import '../sidebar/meeting_sidebar.dart';
-import '../widgets/recording_overlay_channel.dart';
-import '../widgets/recording_overlay_watcher.dart';
+import '../todos/global_todos_view.dart';
 
-class DesktopShell extends ConsumerStatefulWidget {
+class DesktopShell extends ConsumerWidget {
   const DesktopShell({super.key});
 
   @override
-  ConsumerState<DesktopShell> createState() => _DesktopShellState();
-}
-
-class _DesktopShellState extends ConsumerState<DesktopShell> {
-  @override
-  void initState() {
-    super.initState();
-    RecordingOverlayChannel.init(ref);
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final selectedMeetingId = ref.watch(selectedMeetingIdProvider);
+    final section = ref.watch(appSectionProvider);
 
     return Scaffold(
-      endDrawer: const SettingsDrawer(),
-      body: Stack(
+      body: Row(
         children: [
-          Row(
-            children: [
-              const MeetingSidebar(),
-              Expanded(
-                child: SafeArea(
-                  child: Column(
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(24, 20, 24, 0),
-                        child: RecordingPanel(),
-                      ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 220),
-                          child: selectedMeetingId == null
-                              ? const _EmptyWorkspace()
+          const MeetingSidebar(),
+          Expanded(
+            child: SafeArea(
+              child: Column(
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(24, 20, 24, 0),
+                    child: RecordingPanel(),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      child: switch (section) {
+                        AppSection.todos => const GlobalTodosView(
+                          key: ValueKey('todos'),
+                        ),
+                        AppSection.settings => const SettingsView(
+                          key: ValueKey('settings'),
+                        ),
+                        AppSection.meetings =>
+                          selectedMeetingId == null
+                              ? const _EmptyWorkspace(key: ValueKey('empty'))
                               : MeetingChatView(
                                   key: ValueKey(selectedMeetingId),
                                   meetingId: selectedMeetingId,
                                 ),
-                        ),
-                      ),
-                    ],
+                      },
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-          const RecordingOverlayWatcher(),
         ],
       ),
     );
@@ -68,7 +60,7 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
 }
 
 class _EmptyWorkspace extends StatelessWidget {
-  const _EmptyWorkspace();
+  const _EmptyWorkspace({super.key});
 
   @override
   Widget build(BuildContext context) {

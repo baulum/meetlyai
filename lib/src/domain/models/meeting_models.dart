@@ -231,3 +231,20 @@ abstract class ExportArtifact with _$ExportArtifact {
     required String mimeType,
   }) = _ExportArtifact;
 }
+
+@freezed
+abstract class Todo with _$Todo {
+  const factory Todo({
+    required String id,
+    String? meetingId,
+    required String content,
+    @Default(false) bool done,
+    required DateTime createdAt,
+    DateTime? dueDate,
+    String? notes,
+    @Default(0) int sortOrder,
+  }) = _Todo;
+
+  factory Todo.fromJson(Map<String, Object?> json) => _$TodoFromJson(json);
+}
+

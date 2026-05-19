@@ -26,6 +26,10 @@ class MockNativeAudioEnginePlatform
   Future<void> resumeCapture() => Future.value();
 
   @override
+  Future<List<NativeAudioAsset>> flushTranscriptionChunks() =>
+      Future.value(const []);
+
+  @override
   Future<void> startCapture(NativeCaptureConfig config) => Future.value();
 
   @override

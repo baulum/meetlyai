@@ -14,8 +14,18 @@ class WhisperFfiTranscriptionEngine implements TranscriptionEngine {
 
   @override
   Stream<TranscriptSegment> transcribe(TranscriptionRequest request) async* {
+    final hasSeparateSources =
+        request.audioAssets.any(
+          (asset) => asset.source == AudioSourceKind.mic,
+        ) &&
+        request.audioAssets.any(
+          (asset) => asset.source == AudioSourceKind.system,
+        );
     final files = <WhisperSource, String>{};
     for (final asset in request.audioAssets) {
+      if (hasSeparateSources && asset.source == AudioSourceKind.mixed) {
+        continue;
+      }
       final source = switch (asset.source) {
         AudioSourceKind.mic => WhisperSource.mic,
         AudioSourceKind.system => WhisperSource.system,
@@ -36,6 +46,7 @@ class WhisperFfiTranscriptionEngine implements TranscriptionEngine {
       if (segment.text.trim().isEmpty) {
         continue;
       }
+      final offsetMs = _offsetFromChunkPath(segment.audioPath);
       yield TranscriptSegment(
         id: _uuid.v7(),
         meetingId: request.meetingId,
@@ -45,15 +56,27 @@ class WhisperFfiTranscriptionEngine implements TranscriptionEngine {
           WhisperSource.mixed => AudioSourceKind.mixed,
         },
         speakerLabel: switch (segment.source) {
-          WhisperSource.mic => 'Mic',
-          WhisperSource.system => 'System',
-          WhisperSource.mixed => 'Mixed',
+          WhisperSource.mic => 'Speaker 1',
+          WhisperSource.system => 'Speaker 2',
+          WhisperSource.mixed => 'Speaker 1',
         },
-        startMs: segment.startMs,
-        endMs: segment.endMs,
+        startMs: segment.startMs + offsetMs,
+        endMs: segment.endMs + offsetMs,
         text: segment.text,
         confidence: segment.confidence,
       );
     }
+  }
+
+  int _offsetFromChunkPath(String path) {
+    final match = RegExp(r'_(\d{6})\.wav$').firstMatch(path);
+    if (match == null) {
+      return 0;
+    }
+    final index = int.tryParse(match.group(1) ?? '');
+    if (index == null) {
+      return 0;
+    }
+    return index * 25000;
   }
 }

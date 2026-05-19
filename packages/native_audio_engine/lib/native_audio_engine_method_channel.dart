@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +9,7 @@ import 'native_audio_engine_platform_interface.dart';
 class MethodChannelNativeAudioEngine extends NativeAudioEnginePlatform {
   @visibleForTesting
   final methodChannel = const MethodChannel('native_audio_engine');
+  final _levelEvents = const EventChannel('native_audio_engine/levels');
 
   final _levelController = StreamController<NativeAudioLevel>.broadcast();
   final _pcmController = StreamController<NativePcmFrame>.broadcast();
@@ -18,9 +18,13 @@ class MethodChannelNativeAudioEngine extends NativeAudioEnginePlatform {
   NativeCaptureConfig? _activeConfig;
   DateTime? _startedAt;
   bool _paused = false;
+  StreamSubscription<Object?>? _nativeLevelSubscription;
 
   @override
-  Stream<NativeAudioLevel> get levels => _levelController.stream;
+  Stream<NativeAudioLevel> get levels {
+    _listenToNativeLevels();
+    return _levelController.stream;
+  }
 
   @override
   Stream<NativePcmFrame> get pcmFrames => _pcmController.stream;
@@ -65,10 +69,11 @@ class MethodChannelNativeAudioEngine extends NativeAudioEnginePlatform {
     _activeConfig = config;
     _startedAt = DateTime.now();
     _paused = false;
-    _startPreviewStream(config);
+    _listenToNativeLevels();
     try {
       await methodChannel.invokeMethod<void>('startCapture', config.toJson());
     } on MissingPluginException {
+      _startPreviewStream(config);
       return;
     } on PlatformException {
       _previewTimer?.cancel();
@@ -146,6 +151,21 @@ class MethodChannelNativeAudioEngine extends NativeAudioEnginePlatform {
     }
   }
 
+  @override
+  Future<List<NativeAudioAsset>> flushTranscriptionChunks() async {
+    try {
+      final result = await methodChannel.invokeListMethod<Object?>(
+        'flushTranscriptionChunks',
+      );
+      return (result ?? const [])
+          .whereType<Map<Object?, Object?>>()
+          .map(NativeAudioAsset.fromJson)
+          .toList(growable: false);
+    } on MissingPluginException {
+      return const [];
+    }
+  }
+
   void _startPreviewStream(NativeCaptureConfig config) {
     _previewTimer?.cancel();
     _previewTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
@@ -157,17 +177,11 @@ class MethodChannelNativeAudioEngine extends NativeAudioEnginePlatform {
         return;
       }
       final elapsed = DateTime.now().difference(startedAt).inMilliseconds;
-      final phase = elapsed / 240.0;
-      final mic = 0.35 + (math.sin(phase) + 1) * 0.22;
-      final system = config.captureSystemAudio
-          ? 0.25 + (math.cos(phase * 0.8) + 1) * 0.18
-          : 0.0;
-      final mixed = math.min(1, (mic + system) / 1.35);
       _levelController.add(
         NativeAudioLevel(
-          micLevel: mic,
-          systemLevel: system,
-          mixedLevel: mixed.toDouble(),
+          micLevel: 0,
+          systemLevel: 0,
+          mixedLevel: 0,
           timestampMs: elapsed,
         ),
       );
@@ -196,5 +210,19 @@ class MethodChannelNativeAudioEngine extends NativeAudioEnginePlatform {
           );
       }
     });
+  }
+
+  void _listenToNativeLevels() {
+    if (_nativeLevelSubscription != null) {
+      return;
+    }
+
+    _nativeLevelSubscription = _levelEvents.receiveBroadcastStream().listen((
+      event,
+    ) {
+      if (event is Map<Object?, Object?>) {
+        _levelController.add(NativeAudioLevel.fromJson(event));
+      }
+    }, onError: (_) {});
   }
 }

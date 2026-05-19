@@ -52,6 +52,12 @@ abstract class NativeAudioEnginePlatform extends PlatformInterface {
     throw UnimplementedError('resumeCapture() has not been implemented.');
   }
 
+  Future<List<NativeAudioAsset>> flushTranscriptionChunks() {
+    throw UnimplementedError(
+      'flushTranscriptionChunks() has not been implemented.',
+    );
+  }
+
   Future<List<NativeAudioAsset>> stopCapture() {
     throw UnimplementedError('stopCapture() has not been implemented.');
   }

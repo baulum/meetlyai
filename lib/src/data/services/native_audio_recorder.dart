@@ -97,6 +97,18 @@ class NativeAudioRecorderAdapter implements AudioRecorder {
   Future<List<AudioAsset>> stop() async {
     final nativeAssets = await _engine.stopCapture();
     _status = MeetingStatus.transcribing;
+    return _mapAssets(nativeAssets);
+  }
+
+  @override
+  Future<List<AudioAsset>> flushTranscriptionChunks() async {
+    final nativeAssets = await _engine.flushTranscriptionChunks();
+    return _mapAssets(nativeAssets);
+  }
+
+  Future<List<AudioAsset>> _mapAssets(
+    List<NativeAudioAsset> nativeAssets,
+  ) async {
     final now = DateTime.now();
     final assets = <AudioAsset>[];
     for (final asset in nativeAssets) {

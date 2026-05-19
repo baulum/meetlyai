@@ -10,6 +10,7 @@ enum WhisperSource { mic, system, mixed }
 class WhisperSegment {
   const WhisperSegment({
     required this.source,
+    required this.audioPath,
     required this.startMs,
     required this.endMs,
     required this.text,
@@ -17,6 +18,7 @@ class WhisperSegment {
   });
 
   final WhisperSource source;
+  final String audioPath;
   final int startMs;
   final int endMs;
   final String text;
@@ -77,10 +79,7 @@ class WhisperRuntime {
       }
       final byteSize = await file.length();
       if (byteSize <= 44) {
-        throw StateError(
-          'Audio file is empty: ${file.path}. Native audio capture did not '
-          'write PCM data yet, so Whisper has nothing to transcribe.',
-        );
+        continue;
       }
 
       final text = await _runWhisperCli(
@@ -94,6 +93,7 @@ class WhisperRuntime {
       }
       yield WhisperSegment(
         source: entry.key,
+        audioPath: file.path,
         startMs: 0,
         endMs: 0,
         text: text.trim(),

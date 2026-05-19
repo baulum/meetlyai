@@ -13,8 +13,11 @@ class SecureSettingsRepository implements SettingsRepository {
   static const _whisperModelPath = 'whisper_model_path';
   static const _whisperExecutablePath = 'whisper_executable_path';
   static const _preferredLanguage = 'preferred_language';
+  static const _chunkTranscriptionIntervalSeconds =
+      'chunk_transcription_interval_seconds';
 
   static const defaultGeminiModel = 'gemini-2.5-flash';
+  static const defaultChunkTranscriptionIntervalSeconds = 25;
 
   final AppDatabase _db;
   final FlutterSecureStorage _secureStorage;
@@ -65,6 +68,28 @@ class SecureSettingsRepository implements SettingsRepository {
   @override
   Future<void> savePreferredLanguage(String languageCode) {
     return _writeSetting(_preferredLanguage, languageCode);
+  }
+
+  @override
+  Future<int> getChunkTranscriptionIntervalSeconds() async {
+    final raw = await _readSetting(_chunkTranscriptionIntervalSeconds);
+    final parsed = int.tryParse(raw ?? '');
+    return _normalizeChunkInterval(parsed);
+  }
+
+  @override
+  Future<void> saveChunkTranscriptionIntervalSeconds(int seconds) {
+    return _writeSetting(
+      _chunkTranscriptionIntervalSeconds,
+      _normalizeChunkInterval(seconds).toString(),
+    );
+  }
+
+  int _normalizeChunkInterval(int? seconds) {
+    if (seconds == null) {
+      return defaultChunkTranscriptionIntervalSeconds;
+    }
+    return seconds.clamp(10, 120);
   }
 
   Future<String?> _readSetting(String key) async {

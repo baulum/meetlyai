@@ -30,6 +30,8 @@ abstract interface class AudioRecorder {
 
   Future<void> resume();
 
+  Future<List<AudioAsset>> flushTranscriptionChunks();
+
   Future<List<AudioAsset>> stop();
 
   Future<void> dispose();

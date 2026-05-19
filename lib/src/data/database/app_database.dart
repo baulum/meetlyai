@@ -108,6 +108,21 @@ class ChatMessageRows extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+@DataClassName('TodoRecord')
+class TodoRows extends Table {
+  TextColumn get id => text()();
+  TextColumn get meetingId => text().references(MeetingRows, #id).nullable()();
+  TextColumn get content => text().named('text')();
+  BoolColumn get done => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get dueDate => dateTime().nullable()();
+  TextColumn get notes => text().nullable()();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DataClassName('SettingRecord')
 class SettingRows extends Table {
   TextColumn get key => text()();
@@ -127,6 +142,7 @@ class SettingRows extends Table {
     ActionItemRows,
     DecisionRows,
     ChatMessageRows,
+    TodoRows,
     SettingRows,
   ],
 )
@@ -143,17 +159,22 @@ final class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) async {
+    onCreate: (Migrator m) async {
       await m.createAll();
       await _createFtsIndex();
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
       await _createFtsIndex();
+    },
+    onUpgrade: (Migrator m, int from, int to) async {
+      if (from < 2) {
+        await m.createTable(todoRows);
+      }
     },
   );
 

@@ -13,111 +13,143 @@ class MeetingSidebar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final meetings = ref.watch(meetingsProvider);
     final selectedId = ref.watch(selectedMeetingIdProvider);
+    final section = ref.watch(appSectionProvider);
+    final collapsed = ref.watch(sidebarCollapsedProvider);
 
-    return Container(
-      width: 306,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      width: collapsed ? 76 : 306,
       decoration: const BoxDecoration(
         color: Color(0xFF101318),
         border: Border(right: BorderSide(color: Color(0xFF252B33))),
       ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-              child: Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.graphic_eq,
-                      color: Color(0xFF06110D),
-                      size: 20,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final effectiveCollapsed = collapsed || constraints.maxWidth < 220;
+
+          return SafeArea(
+            child: Column(
+              children: [
+                _SidebarHeader(
+                  collapsed: effectiveCollapsed,
+                  onToggle: () =>
+                      ref.read(sidebarCollapsedProvider.notifier).toggle(),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Column(
+                    children: [
+                      _NavItem(
+                        collapsed: effectiveCollapsed,
+                        selected: section == AppSection.meetings,
+                        icon: Icons.forum_outlined,
+                        label: 'Meetings',
+                        onTap: () => ref
+                            .read(appSectionProvider.notifier)
+                            .showMeetings(),
+                      ),
+                      _NavItem(
+                        collapsed: effectiveCollapsed,
+                        selected: section == AppSection.todos,
+                        icon: Icons.checklist_outlined,
+                        label: 'Todos',
+                        onTap: () =>
+                            ref.read(appSectionProvider.notifier).showTodos(),
+                      ),
+                      _NavItem(
+                        collapsed: effectiveCollapsed,
+                        selected: section == AppSection.settings,
+                        icon: Icons.tune,
+                        label: 'Settings',
+                        onTap: () => ref
+                            .read(appSectionProvider.notifier)
+                            .showSettings(),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!effectiveCollapsed && section == AppSection.meetings) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                    child: FilledButton.icon(
+                      onPressed: () => ref
+                          .read(recordingControllerProvider.notifier)
+                          .startNewMeeting(),
+                      icon: const Icon(Icons.add),
+                      label: const Text('New session'),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'MeetlyAI',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
+                    child: TextField(
+                      onChanged: (value) => ref
+                          .read(meetingSearchProvider.notifier)
+                          .setQuery(value),
+                      decoration: const InputDecoration(
+                        hintText: 'Search meetings',
+                        prefixIcon: Icon(Icons.search),
                       ),
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'Settings',
-                    onPressed: () => Scaffold.of(context).openEndDrawer(),
-                    icon: const Icon(Icons.tune),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: FilledButton.icon(
-                onPressed: () => ref
-                    .read(recordingControllerProvider.notifier)
-                    .startNewMeeting(),
-                icon: const Icon(Icons.add),
-                label: const Text('New session'),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
-              child: TextField(
-                onChanged: (value) =>
-                    ref.read(meetingSearchProvider.notifier).setQuery(value),
-                decoration: const InputDecoration(
-                  hintText: 'Search meetings',
-                  prefixIcon: Icon(Icons.search),
+                ] else
+                  const SizedBox(height: 14),
+                Expanded(
+                  child: effectiveCollapsed || section != AppSection.meetings
+                      ? const SizedBox.shrink()
+                      : meetings.when(
+                          data: (items) {
+                            if (items.isEmpty) {
+                              return const _EmptyMeetings();
+                            }
+                            return ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(10, 2, 10, 16),
+                              itemCount: items.length,
+                              itemBuilder: (context, index) {
+                                final meeting = items[index];
+                                return _MeetingTile(
+                                  meeting: meeting,
+                                  selected: meeting.id == selectedId,
+                                  onTap: () {
+                                    ref
+                                        .read(appSectionProvider.notifier)
+                                        .showMeetings();
+                                    ref
+                                        .read(
+                                          selectedMeetingIdProvider.notifier,
+                                        )
+                                        .select(meeting.id);
+                                  },
+                                  onPin: () => ref
+                                      .read(
+                                        recordingControllerProvider.notifier,
+                                      )
+                                      .togglePin(meeting),
+                                  onFavorite: () => ref
+                                      .read(
+                                        recordingControllerProvider.notifier,
+                                      )
+                                      .toggleFavorite(meeting),
+                                  onRename: () =>
+                                      _renameMeeting(context, ref, meeting),
+                                  onDelete: () =>
+                                      _deleteMeeting(context, ref, meeting),
+                                );
+                              },
+                            );
+                          },
+                          error: (error, _) => Padding(
+                            padding: const EdgeInsets.all(18),
+                            child: Text('Could not load meetings: $error'),
+                          ),
+                          loading: () =>
+                              const Center(child: CircularProgressIndicator()),
+                        ),
                 ),
-              ),
+              ],
             ),
-            Expanded(
-              child: meetings.when(
-                data: (items) {
-                  if (items.isEmpty) {
-                    return const _EmptyMeetings();
-                  }
-                  return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(10, 2, 10, 16),
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      final meeting = items[index];
-                      return _MeetingTile(
-                        meeting: meeting,
-                        selected: meeting.id == selectedId,
-                        onTap: () {
-                          ref
-                              .read(selectedMeetingIdProvider.notifier)
-                              .select(meeting.id);
-                        },
-                        onPin: () => ref
-                            .read(recordingControllerProvider.notifier)
-                            .togglePin(meeting),
-                        onFavorite: () => ref
-                            .read(recordingControllerProvider.notifier)
-                            .toggleFavorite(meeting),
-                        onRename: () => _renameMeeting(context, ref, meeting),
-                        onDelete: () => _deleteMeeting(context, ref, meeting),
-                      );
-                    },
-                  );
-                },
-                error: (error, _) => Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Text('Could not load meetings: $error'),
-                ),
-                loading: () => const Center(child: CircularProgressIndicator()),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -197,6 +229,136 @@ class MeetingSidebar extends ConsumerWidget {
     await ref
         .read(recordingControllerProvider.notifier)
         .deleteMeeting(meeting.id);
+  }
+}
+
+class _SidebarHeader extends StatelessWidget {
+  const _SidebarHeader({required this.collapsed, required this.onToggle});
+
+  final bool collapsed;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final logo = Container(
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Icon(Icons.graphic_eq, color: Color(0xFF06110D), size: 20),
+    );
+    final toggle = IconButton(
+      tooltip: collapsed ? 'Expand sidebar' : 'Collapse sidebar',
+      onPressed: onToggle,
+      icon: Icon(
+        collapsed
+            ? Icons.keyboard_double_arrow_right
+            : Icons.keyboard_double_arrow_left,
+      ),
+    );
+
+    if (collapsed) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(10, 14, 10, 10),
+        child: Column(
+          children: [
+            logo,
+            const SizedBox(height: 8),
+            SizedBox.square(dimension: 40, child: toggle),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+      child: Row(
+        children: [
+          logo,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'MeetlyAI',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+          toggle,
+        ],
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.collapsed,
+    required this.selected,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final bool collapsed;
+  final bool selected;
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected
+        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.14)
+        : Colors.transparent;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Tooltip(
+        message: collapsed ? label : '',
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            height: 42,
+            padding: EdgeInsets.symmetric(horizontal: collapsed ? 0 : 12),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: selected
+                    ? Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.24)
+                    : Colors.transparent,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: collapsed
+                  ? MainAxisAlignment.center
+                  : MainAxisAlignment.start,
+              children: [
+                Icon(icon, size: 20),
+                if (!collapsed) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

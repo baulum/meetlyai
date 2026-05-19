@@ -20,4 +20,8 @@ abstract interface class SettingsRepository {
   Future<String?> getPreferredLanguage();
 
   Future<void> savePreferredLanguage(String languageCode);
+
+  Future<int> getChunkTranscriptionIntervalSeconds();
+
+  Future<void> saveChunkTranscriptionIntervalSeconds(int seconds);
 }

@@ -6,19 +6,35 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers.dart';
 
-class SettingsDrawer extends ConsumerStatefulWidget {
+class SettingsDrawer extends StatelessWidget {
   const SettingsDrawer({super.key});
 
   @override
-  ConsumerState<SettingsDrawer> createState() => _SettingsDrawerState();
+  Widget build(BuildContext context) {
+    return Drawer(
+      width: 420,
+      backgroundColor: const Color(0xFF101318),
+      child: SettingsView(onClose: () => Navigator.of(context).pop()),
+    );
+  }
 }
 
-class _SettingsDrawerState extends ConsumerState<SettingsDrawer> {
+class SettingsView extends ConsumerStatefulWidget {
+  const SettingsView({super.key, this.onClose});
+
+  final VoidCallback? onClose;
+
+  @override
+  ConsumerState<SettingsView> createState() => _SettingsViewState();
+}
+
+class _SettingsViewState extends ConsumerState<SettingsView> {
   final _apiKeyController = TextEditingController();
   final _geminiModelController = TextEditingController();
   final _whisperPathController = TextEditingController();
   final _whisperExecutableController = TextEditingController();
   String _language = 'auto';
+  int _chunkIntervalSeconds = 25;
   bool _loaded = false;
 
   @override
@@ -43,6 +59,8 @@ class _SettingsDrawerState extends ConsumerState<SettingsDrawer> {
     final whisperPath = await settings.getWhisperModelPath();
     final whisperExecutablePath = await settings.getWhisperExecutablePath();
     final language = await settings.getPreferredLanguage();
+    final chunkIntervalSeconds = await settings
+        .getChunkTranscriptionIntervalSeconds();
     if (!mounted) {
       return;
     }
@@ -52,139 +70,169 @@ class _SettingsDrawerState extends ConsumerState<SettingsDrawer> {
       _whisperPathController.text = whisperPath ?? '';
       _whisperExecutableController.text = whisperExecutablePath ?? '';
       _language = language ?? 'auto';
+      _chunkIntervalSeconds = chunkIntervalSeconds;
       _loaded = true;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Drawer(
-      width: 420,
-      backgroundColor: const Color(0xFF101318),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(22),
-          child: !_loaded
-              ? const Center(child: CircularProgressIndicator())
-              : ListView(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Settings',
-                            style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.w800),
-                          ),
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: !_loaded
+            ? const Center(child: CircularProgressIndicator())
+            : ListView(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Settings',
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
+                      ),
+                      if (widget.onClose != null)
                         IconButton(
                           tooltip: 'Close',
-                          onPressed: () => Navigator.of(context).pop(),
+                          onPressed: widget.onClose,
                           icon: const Icon(Icons.close),
                         ),
-                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  _Label(
+                    title: 'Gemini API key',
+                    subtitle: 'Stored locally in the OS secure store.',
+                  ),
+                  TextField(
+                    controller: _apiKeyController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      hintText: 'AIza...',
+                      prefixIcon: Icon(Icons.key),
                     ),
-                    const SizedBox(height: 22),
-                    _Label(
-                      title: 'Gemini API key',
-                      subtitle: 'Stored locally in the OS secure store.',
+                  ),
+                  const SizedBox(height: 18),
+                  _Label(
+                    title: 'Gemini model',
+                    subtitle: 'Default production model for summaries/chat.',
+                  ),
+                  TextField(
+                    controller: _geminiModelController,
+                    decoration: const InputDecoration(
+                      hintText: 'gemini-2.5-flash',
+                      prefixIcon: Icon(Icons.auto_awesome),
                     ),
-                    TextField(
-                      controller: _apiKeyController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        hintText: 'AIza...',
-                        prefixIcon: Icon(Icons.key),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    _Label(
-                      title: 'Gemini model',
-                      subtitle: 'Default production model for summaries/chat.',
-                    ),
-                    TextField(
-                      controller: _geminiModelController,
-                      decoration: const InputDecoration(
-                        hintText: 'gemini-2.5-flash',
-                        prefixIcon: Icon(Icons.auto_awesome),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    _Label(
-                      title: 'Whisper model',
-                      subtitle: 'Local ggml model path for whisper.cpp.',
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _whisperPathController,
-                            decoration: const InputDecoration(
-                              hintText: '/models/ggml-medium.bin',
-                              prefixIcon: Icon(Icons.storage),
-                            ),
+                  ),
+                  const SizedBox(height: 18),
+                  _Label(
+                    title: 'Whisper model',
+                    subtitle: 'Local ggml model path for whisper.cpp.',
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _whisperPathController,
+                          decoration: const InputDecoration(
+                            hintText: '/models/ggml-medium.bin',
+                            prefixIcon: Icon(Icons.storage),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        IconButton.filledTonal(
-                          tooltip: 'Choose model file',
-                          onPressed: _pickWhisperModel,
-                          icon: const Icon(Icons.folder_open),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    _Label(
-                      title: 'Whisper executable',
-                      subtitle:
-                          'Path to whisper-cli. Useful because macOS apps do not inherit your Terminal PATH.',
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _whisperExecutableController,
-                            decoration: const InputDecoration(
-                              hintText:
-                                  '/Users/paul/whisper.cpp/build/bin/whisper-cli',
-                              prefixIcon: Icon(Icons.terminal),
-                            ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filledTonal(
+                        tooltip: 'Choose model file',
+                        onPressed: _pickWhisperModel,
+                        icon: const Icon(Icons.folder_open),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  _Label(
+                    title: 'Whisper executable',
+                    subtitle:
+                        'Path to whisper-cli. Useful because macOS apps do not inherit your Terminal PATH.',
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _whisperExecutableController,
+                          decoration: const InputDecoration(
+                            hintText:
+                                '/Users/paul/whisper.cpp/build/bin/whisper-cli',
+                            prefixIcon: Icon(Icons.terminal),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        IconButton.filledTonal(
-                          tooltip: 'Choose executable',
-                          onPressed: _pickWhisperExecutable,
-                          icon: const Icon(Icons.folder_open),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filledTonal(
+                        tooltip: 'Choose executable',
+                        onPressed: _pickWhisperExecutable,
+                        icon: const Icon(Icons.folder_open),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  _Label(
+                    title: 'Meeting language',
+                    subtitle: 'Use auto unless you know the meeting language.',
+                  ),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'auto', label: Text('Auto')),
+                      ButtonSegment(value: 'de', label: Text('DE')),
+                      ButtonSegment(value: 'en', label: Text('EN')),
+                    ],
+                    selected: {_language},
+                    onSelectionChanged: (value) {
+                      setState(() => _language = value.single);
+                    },
+                  ),
+                  const SizedBox(height: 18),
+                  _Label(
+                    title: 'Live transcription interval',
+                    subtitle:
+                        'How often MeetlyAI sends sealed mic/system chunks to local Whisper while recording.',
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Slider(
+                          min: 10,
+                          max: 120,
+                          divisions: 22,
+                          value: _chunkIntervalSeconds.toDouble(),
+                          label: '${_chunkIntervalSeconds}s',
+                          onChanged: (value) {
+                            setState(() {
+                              _chunkIntervalSeconds = value.round();
+                            });
+                          },
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    _Label(
-                      title: 'Meeting language',
-                      subtitle:
-                          'Use auto unless you know the meeting language.',
-                    ),
-                    SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(value: 'auto', label: Text('Auto')),
-                        ButtonSegment(value: 'de', label: Text('DE')),
-                        ButtonSegment(value: 'en', label: Text('EN')),
-                      ],
-                      selected: {_language},
-                      onSelectionChanged: (value) {
-                        setState(() => _language = value.single);
-                      },
-                    ),
-                    const SizedBox(height: 26),
-                    FilledButton.icon(
-                      onPressed: _save,
-                      icon: const Icon(Icons.save),
-                      label: const Text('Save settings'),
-                    ),
-                  ],
-                ),
-        ),
+                      ),
+                      SizedBox(
+                        width: 78,
+                        child: Text(
+                          '${_chunkIntervalSeconds}s',
+                          textAlign: TextAlign.right,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 26),
+                  FilledButton.icon(
+                    onPressed: _save,
+                    icon: const Icon(Icons.save),
+                    label: const Text('Save settings'),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -254,6 +302,7 @@ class _SettingsDrawerState extends ConsumerState<SettingsDrawer> {
       _whisperExecutableController.text.trim(),
     );
     await settings.savePreferredLanguage(_language);
+    await settings.saveChunkTranscriptionIntervalSeconds(_chunkIntervalSeconds);
     if (!mounted) {
       return;
     }
