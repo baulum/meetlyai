@@ -4364,6 +4364,1620 @@ class SettingRowsCompanion extends UpdateCompanion<SettingRecord> {
   }
 }
 
+class $StudyFolderRowsTable extends StudyFolderRows
+    with TableInfo<$StudyFolderRowsTable, StudyFolderRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StudyFolderRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _parentIdMeta = const VerificationMeta(
+    'parentId',
+  );
+  @override
+  late final GeneratedColumn<String> parentId = GeneratedColumn<String>(
+    'parent_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES study_folder_rows (id)',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _colorMeta = const VerificationMeta('color');
+  @override
+  late final GeneratedColumn<String> color = GeneratedColumn<String>(
+    'color',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('teal'),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    parentId,
+    name,
+    description,
+    color,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'study_folder_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StudyFolderRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('parent_id')) {
+      context.handle(
+        _parentIdMeta,
+        parentId.isAcceptableOrUnknown(data['parent_id']!, _parentIdMeta),
+      );
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('color')) {
+      context.handle(
+        _colorMeta,
+        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StudyFolderRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudyFolderRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      parentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}parent_id'],
+      ),
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      color: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}color'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $StudyFolderRowsTable createAlias(String alias) {
+    return $StudyFolderRowsTable(attachedDatabase, alias);
+  }
+}
+
+class StudyFolderRecord extends DataClass
+    implements Insertable<StudyFolderRecord> {
+  final String id;
+  final String? parentId;
+  final String name;
+  final String? description;
+  final String color;
+  final DateTime createdAt;
+  const StudyFolderRecord({
+    required this.id,
+    this.parentId,
+    required this.name,
+    this.description,
+    required this.color,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || parentId != null) {
+      map['parent_id'] = Variable<String>(parentId);
+    }
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['color'] = Variable<String>(color);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  StudyFolderRowsCompanion toCompanion(bool nullToAbsent) {
+    return StudyFolderRowsCompanion(
+      id: Value(id),
+      parentId: parentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentId),
+      name: Value(name),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      color: Value(color),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory StudyFolderRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudyFolderRecord(
+      id: serializer.fromJson<String>(json['id']),
+      parentId: serializer.fromJson<String?>(json['parentId']),
+      name: serializer.fromJson<String>(json['name']),
+      description: serializer.fromJson<String?>(json['description']),
+      color: serializer.fromJson<String>(json['color']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'parentId': serializer.toJson<String?>(parentId),
+      'name': serializer.toJson<String>(name),
+      'description': serializer.toJson<String?>(description),
+      'color': serializer.toJson<String>(color),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  StudyFolderRecord copyWith({
+    String? id,
+    Value<String?> parentId = const Value.absent(),
+    String? name,
+    Value<String?> description = const Value.absent(),
+    String? color,
+    DateTime? createdAt,
+  }) => StudyFolderRecord(
+    id: id ?? this.id,
+    parentId: parentId.present ? parentId.value : this.parentId,
+    name: name ?? this.name,
+    description: description.present ? description.value : this.description,
+    color: color ?? this.color,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  StudyFolderRecord copyWithCompanion(StudyFolderRowsCompanion data) {
+    return StudyFolderRecord(
+      id: data.id.present ? data.id.value : this.id,
+      parentId: data.parentId.present ? data.parentId.value : this.parentId,
+      name: data.name.present ? data.name.value : this.name,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      color: data.color.present ? data.color.value : this.color,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyFolderRecord(')
+          ..write('id: $id, ')
+          ..write('parentId: $parentId, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('color: $color, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, parentId, name, description, color, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudyFolderRecord &&
+          other.id == this.id &&
+          other.parentId == this.parentId &&
+          other.name == this.name &&
+          other.description == this.description &&
+          other.color == this.color &&
+          other.createdAt == this.createdAt);
+}
+
+class StudyFolderRowsCompanion extends UpdateCompanion<StudyFolderRecord> {
+  final Value<String> id;
+  final Value<String?> parentId;
+  final Value<String> name;
+  final Value<String?> description;
+  final Value<String> color;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const StudyFolderRowsCompanion({
+    this.id = const Value.absent(),
+    this.parentId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.description = const Value.absent(),
+    this.color = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  StudyFolderRowsCompanion.insert({
+    required String id,
+    this.parentId = const Value.absent(),
+    required String name,
+    this.description = const Value.absent(),
+    this.color = const Value.absent(),
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       createdAt = Value(createdAt);
+  static Insertable<StudyFolderRecord> custom({
+    Expression<String>? id,
+    Expression<String>? parentId,
+    Expression<String>? name,
+    Expression<String>? description,
+    Expression<String>? color,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (parentId != null) 'parent_id': parentId,
+      if (name != null) 'name': name,
+      if (description != null) 'description': description,
+      if (color != null) 'color': color,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  StudyFolderRowsCompanion copyWith({
+    Value<String>? id,
+    Value<String?>? parentId,
+    Value<String>? name,
+    Value<String?>? description,
+    Value<String>? color,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return StudyFolderRowsCompanion(
+      id: id ?? this.id,
+      parentId: parentId ?? this.parentId,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      color: color ?? this.color,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (parentId.present) {
+      map['parent_id'] = Variable<String>(parentId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (color.present) {
+      map['color'] = Variable<String>(color.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyFolderRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('parentId: $parentId, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('color: $color, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $StudyDocumentRowsTable extends StudyDocumentRows
+    with TableInfo<$StudyDocumentRowsTable, StudyDocumentRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StudyDocumentRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _folderIdMeta = const VerificationMeta(
+    'folderId',
+  );
+  @override
+  late final GeneratedColumn<String> folderId = GeneratedColumn<String>(
+    'folder_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES study_folder_rows (id)',
+    ),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourcePathMeta = const VerificationMeta(
+    'sourcePath',
+  );
+  @override
+  late final GeneratedColumn<String> sourcePath = GeneratedColumn<String>(
+    'source_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _extractedTextMeta = const VerificationMeta(
+    'extractedText',
+  );
+  @override
+  late final GeneratedColumn<String> extractedText = GeneratedColumn<String>(
+    'extracted_text',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    folderId,
+    title,
+    kind,
+    sourcePath,
+    category,
+    extractedText,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'study_document_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StudyDocumentRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('folder_id')) {
+      context.handle(
+        _folderIdMeta,
+        folderId.isAcceptableOrUnknown(data['folder_id']!, _folderIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_folderIdMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('source_path')) {
+      context.handle(
+        _sourcePathMeta,
+        sourcePath.isAcceptableOrUnknown(data['source_path']!, _sourcePathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourcePathMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    }
+    if (data.containsKey('extracted_text')) {
+      context.handle(
+        _extractedTextMeta,
+        extractedText.isAcceptableOrUnknown(
+          data['extracted_text']!,
+          _extractedTextMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StudyDocumentRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudyDocumentRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      folderId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}folder_id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      sourcePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_path'],
+      )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      ),
+      extractedText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}extracted_text'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $StudyDocumentRowsTable createAlias(String alias) {
+    return $StudyDocumentRowsTable(attachedDatabase, alias);
+  }
+}
+
+class StudyDocumentRecord extends DataClass
+    implements Insertable<StudyDocumentRecord> {
+  final String id;
+  final String folderId;
+  final String title;
+  final String kind;
+  final String sourcePath;
+  final String? category;
+  final String extractedText;
+  final DateTime createdAt;
+  const StudyDocumentRecord({
+    required this.id,
+    required this.folderId,
+    required this.title,
+    required this.kind,
+    required this.sourcePath,
+    this.category,
+    required this.extractedText,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['folder_id'] = Variable<String>(folderId);
+    map['title'] = Variable<String>(title);
+    map['kind'] = Variable<String>(kind);
+    map['source_path'] = Variable<String>(sourcePath);
+    if (!nullToAbsent || category != null) {
+      map['category'] = Variable<String>(category);
+    }
+    map['extracted_text'] = Variable<String>(extractedText);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  StudyDocumentRowsCompanion toCompanion(bool nullToAbsent) {
+    return StudyDocumentRowsCompanion(
+      id: Value(id),
+      folderId: Value(folderId),
+      title: Value(title),
+      kind: Value(kind),
+      sourcePath: Value(sourcePath),
+      category: category == null && nullToAbsent
+          ? const Value.absent()
+          : Value(category),
+      extractedText: Value(extractedText),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory StudyDocumentRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudyDocumentRecord(
+      id: serializer.fromJson<String>(json['id']),
+      folderId: serializer.fromJson<String>(json['folderId']),
+      title: serializer.fromJson<String>(json['title']),
+      kind: serializer.fromJson<String>(json['kind']),
+      sourcePath: serializer.fromJson<String>(json['sourcePath']),
+      category: serializer.fromJson<String?>(json['category']),
+      extractedText: serializer.fromJson<String>(json['extractedText']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'folderId': serializer.toJson<String>(folderId),
+      'title': serializer.toJson<String>(title),
+      'kind': serializer.toJson<String>(kind),
+      'sourcePath': serializer.toJson<String>(sourcePath),
+      'category': serializer.toJson<String?>(category),
+      'extractedText': serializer.toJson<String>(extractedText),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  StudyDocumentRecord copyWith({
+    String? id,
+    String? folderId,
+    String? title,
+    String? kind,
+    String? sourcePath,
+    Value<String?> category = const Value.absent(),
+    String? extractedText,
+    DateTime? createdAt,
+  }) => StudyDocumentRecord(
+    id: id ?? this.id,
+    folderId: folderId ?? this.folderId,
+    title: title ?? this.title,
+    kind: kind ?? this.kind,
+    sourcePath: sourcePath ?? this.sourcePath,
+    category: category.present ? category.value : this.category,
+    extractedText: extractedText ?? this.extractedText,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  StudyDocumentRecord copyWithCompanion(StudyDocumentRowsCompanion data) {
+    return StudyDocumentRecord(
+      id: data.id.present ? data.id.value : this.id,
+      folderId: data.folderId.present ? data.folderId.value : this.folderId,
+      title: data.title.present ? data.title.value : this.title,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      sourcePath: data.sourcePath.present
+          ? data.sourcePath.value
+          : this.sourcePath,
+      category: data.category.present ? data.category.value : this.category,
+      extractedText: data.extractedText.present
+          ? data.extractedText.value
+          : this.extractedText,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyDocumentRecord(')
+          ..write('id: $id, ')
+          ..write('folderId: $folderId, ')
+          ..write('title: $title, ')
+          ..write('kind: $kind, ')
+          ..write('sourcePath: $sourcePath, ')
+          ..write('category: $category, ')
+          ..write('extractedText: $extractedText, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    folderId,
+    title,
+    kind,
+    sourcePath,
+    category,
+    extractedText,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudyDocumentRecord &&
+          other.id == this.id &&
+          other.folderId == this.folderId &&
+          other.title == this.title &&
+          other.kind == this.kind &&
+          other.sourcePath == this.sourcePath &&
+          other.category == this.category &&
+          other.extractedText == this.extractedText &&
+          other.createdAt == this.createdAt);
+}
+
+class StudyDocumentRowsCompanion extends UpdateCompanion<StudyDocumentRecord> {
+  final Value<String> id;
+  final Value<String> folderId;
+  final Value<String> title;
+  final Value<String> kind;
+  final Value<String> sourcePath;
+  final Value<String?> category;
+  final Value<String> extractedText;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const StudyDocumentRowsCompanion({
+    this.id = const Value.absent(),
+    this.folderId = const Value.absent(),
+    this.title = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.sourcePath = const Value.absent(),
+    this.category = const Value.absent(),
+    this.extractedText = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  StudyDocumentRowsCompanion.insert({
+    required String id,
+    required String folderId,
+    required String title,
+    required String kind,
+    required String sourcePath,
+    this.category = const Value.absent(),
+    this.extractedText = const Value.absent(),
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       folderId = Value(folderId),
+       title = Value(title),
+       kind = Value(kind),
+       sourcePath = Value(sourcePath),
+       createdAt = Value(createdAt);
+  static Insertable<StudyDocumentRecord> custom({
+    Expression<String>? id,
+    Expression<String>? folderId,
+    Expression<String>? title,
+    Expression<String>? kind,
+    Expression<String>? sourcePath,
+    Expression<String>? category,
+    Expression<String>? extractedText,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (folderId != null) 'folder_id': folderId,
+      if (title != null) 'title': title,
+      if (kind != null) 'kind': kind,
+      if (sourcePath != null) 'source_path': sourcePath,
+      if (category != null) 'category': category,
+      if (extractedText != null) 'extracted_text': extractedText,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  StudyDocumentRowsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? folderId,
+    Value<String>? title,
+    Value<String>? kind,
+    Value<String>? sourcePath,
+    Value<String?>? category,
+    Value<String>? extractedText,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return StudyDocumentRowsCompanion(
+      id: id ?? this.id,
+      folderId: folderId ?? this.folderId,
+      title: title ?? this.title,
+      kind: kind ?? this.kind,
+      sourcePath: sourcePath ?? this.sourcePath,
+      category: category ?? this.category,
+      extractedText: extractedText ?? this.extractedText,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (folderId.present) {
+      map['folder_id'] = Variable<String>(folderId.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (sourcePath.present) {
+      map['source_path'] = Variable<String>(sourcePath.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (extractedText.present) {
+      map['extracted_text'] = Variable<String>(extractedText.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyDocumentRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('folderId: $folderId, ')
+          ..write('title: $title, ')
+          ..write('kind: $kind, ')
+          ..write('sourcePath: $sourcePath, ')
+          ..write('category: $category, ')
+          ..write('extractedText: $extractedText, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $StudyMeetingLinkRowsTable extends StudyMeetingLinkRows
+    with TableInfo<$StudyMeetingLinkRowsTable, StudyMeetingLinkRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StudyMeetingLinkRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _folderIdMeta = const VerificationMeta(
+    'folderId',
+  );
+  @override
+  late final GeneratedColumn<String> folderId = GeneratedColumn<String>(
+    'folder_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES study_folder_rows (id)',
+    ),
+  );
+  static const VerificationMeta _meetingIdMeta = const VerificationMeta(
+    'meetingId',
+  );
+  @override
+  late final GeneratedColumn<String> meetingId = GeneratedColumn<String>(
+    'meeting_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES meeting_rows (id)',
+    ),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, folderId, meetingId, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'study_meeting_link_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StudyMeetingLinkRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('folder_id')) {
+      context.handle(
+        _folderIdMeta,
+        folderId.isAcceptableOrUnknown(data['folder_id']!, _folderIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_folderIdMeta);
+    }
+    if (data.containsKey('meeting_id')) {
+      context.handle(
+        _meetingIdMeta,
+        meetingId.isAcceptableOrUnknown(data['meeting_id']!, _meetingIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_meetingIdMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StudyMeetingLinkRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudyMeetingLinkRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      folderId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}folder_id'],
+      )!,
+      meetingId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}meeting_id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $StudyMeetingLinkRowsTable createAlias(String alias) {
+    return $StudyMeetingLinkRowsTable(attachedDatabase, alias);
+  }
+}
+
+class StudyMeetingLinkRecord extends DataClass
+    implements Insertable<StudyMeetingLinkRecord> {
+  final String id;
+  final String folderId;
+  final String meetingId;
+  final DateTime createdAt;
+  const StudyMeetingLinkRecord({
+    required this.id,
+    required this.folderId,
+    required this.meetingId,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['folder_id'] = Variable<String>(folderId);
+    map['meeting_id'] = Variable<String>(meetingId);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  StudyMeetingLinkRowsCompanion toCompanion(bool nullToAbsent) {
+    return StudyMeetingLinkRowsCompanion(
+      id: Value(id),
+      folderId: Value(folderId),
+      meetingId: Value(meetingId),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory StudyMeetingLinkRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudyMeetingLinkRecord(
+      id: serializer.fromJson<String>(json['id']),
+      folderId: serializer.fromJson<String>(json['folderId']),
+      meetingId: serializer.fromJson<String>(json['meetingId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'folderId': serializer.toJson<String>(folderId),
+      'meetingId': serializer.toJson<String>(meetingId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  StudyMeetingLinkRecord copyWith({
+    String? id,
+    String? folderId,
+    String? meetingId,
+    DateTime? createdAt,
+  }) => StudyMeetingLinkRecord(
+    id: id ?? this.id,
+    folderId: folderId ?? this.folderId,
+    meetingId: meetingId ?? this.meetingId,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  StudyMeetingLinkRecord copyWithCompanion(StudyMeetingLinkRowsCompanion data) {
+    return StudyMeetingLinkRecord(
+      id: data.id.present ? data.id.value : this.id,
+      folderId: data.folderId.present ? data.folderId.value : this.folderId,
+      meetingId: data.meetingId.present ? data.meetingId.value : this.meetingId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyMeetingLinkRecord(')
+          ..write('id: $id, ')
+          ..write('folderId: $folderId, ')
+          ..write('meetingId: $meetingId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, folderId, meetingId, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudyMeetingLinkRecord &&
+          other.id == this.id &&
+          other.folderId == this.folderId &&
+          other.meetingId == this.meetingId &&
+          other.createdAt == this.createdAt);
+}
+
+class StudyMeetingLinkRowsCompanion
+    extends UpdateCompanion<StudyMeetingLinkRecord> {
+  final Value<String> id;
+  final Value<String> folderId;
+  final Value<String> meetingId;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const StudyMeetingLinkRowsCompanion({
+    this.id = const Value.absent(),
+    this.folderId = const Value.absent(),
+    this.meetingId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  StudyMeetingLinkRowsCompanion.insert({
+    required String id,
+    required String folderId,
+    required String meetingId,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       folderId = Value(folderId),
+       meetingId = Value(meetingId),
+       createdAt = Value(createdAt);
+  static Insertable<StudyMeetingLinkRecord> custom({
+    Expression<String>? id,
+    Expression<String>? folderId,
+    Expression<String>? meetingId,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (folderId != null) 'folder_id': folderId,
+      if (meetingId != null) 'meeting_id': meetingId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  StudyMeetingLinkRowsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? folderId,
+    Value<String>? meetingId,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return StudyMeetingLinkRowsCompanion(
+      id: id ?? this.id,
+      folderId: folderId ?? this.folderId,
+      meetingId: meetingId ?? this.meetingId,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (folderId.present) {
+      map['folder_id'] = Variable<String>(folderId.value);
+    }
+    if (meetingId.present) {
+      map['meeting_id'] = Variable<String>(meetingId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyMeetingLinkRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('folderId: $folderId, ')
+          ..write('meetingId: $meetingId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $StudyChatRowsTable extends StudyChatRows
+    with TableInfo<$StudyChatRowsTable, StudyChatRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StudyChatRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _folderIdMeta = const VerificationMeta(
+    'folderId',
+  );
+  @override
+  late final GeneratedColumn<String> folderId = GeneratedColumn<String>(
+    'folder_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES study_folder_rows (id)',
+    ),
+  );
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+    'role',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+    'content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    folderId,
+    role,
+    content,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'study_chat_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StudyChatRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('folder_id')) {
+      context.handle(
+        _folderIdMeta,
+        folderId.isAcceptableOrUnknown(data['folder_id']!, _folderIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_folderIdMeta);
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+        _roleMeta,
+        role.isAcceptableOrUnknown(data['role']!, _roleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roleMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StudyChatRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudyChatRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      folderId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}folder_id'],
+      )!,
+      role: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role'],
+      )!,
+      content: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $StudyChatRowsTable createAlias(String alias) {
+    return $StudyChatRowsTable(attachedDatabase, alias);
+  }
+}
+
+class StudyChatRecord extends DataClass implements Insertable<StudyChatRecord> {
+  final String id;
+  final String folderId;
+  final String role;
+  final String content;
+  final DateTime createdAt;
+  const StudyChatRecord({
+    required this.id,
+    required this.folderId,
+    required this.role,
+    required this.content,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['folder_id'] = Variable<String>(folderId);
+    map['role'] = Variable<String>(role);
+    map['content'] = Variable<String>(content);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  StudyChatRowsCompanion toCompanion(bool nullToAbsent) {
+    return StudyChatRowsCompanion(
+      id: Value(id),
+      folderId: Value(folderId),
+      role: Value(role),
+      content: Value(content),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory StudyChatRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudyChatRecord(
+      id: serializer.fromJson<String>(json['id']),
+      folderId: serializer.fromJson<String>(json['folderId']),
+      role: serializer.fromJson<String>(json['role']),
+      content: serializer.fromJson<String>(json['content']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'folderId': serializer.toJson<String>(folderId),
+      'role': serializer.toJson<String>(role),
+      'content': serializer.toJson<String>(content),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  StudyChatRecord copyWith({
+    String? id,
+    String? folderId,
+    String? role,
+    String? content,
+    DateTime? createdAt,
+  }) => StudyChatRecord(
+    id: id ?? this.id,
+    folderId: folderId ?? this.folderId,
+    role: role ?? this.role,
+    content: content ?? this.content,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  StudyChatRecord copyWithCompanion(StudyChatRowsCompanion data) {
+    return StudyChatRecord(
+      id: data.id.present ? data.id.value : this.id,
+      folderId: data.folderId.present ? data.folderId.value : this.folderId,
+      role: data.role.present ? data.role.value : this.role,
+      content: data.content.present ? data.content.value : this.content,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyChatRecord(')
+          ..write('id: $id, ')
+          ..write('folderId: $folderId, ')
+          ..write('role: $role, ')
+          ..write('content: $content, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, folderId, role, content, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudyChatRecord &&
+          other.id == this.id &&
+          other.folderId == this.folderId &&
+          other.role == this.role &&
+          other.content == this.content &&
+          other.createdAt == this.createdAt);
+}
+
+class StudyChatRowsCompanion extends UpdateCompanion<StudyChatRecord> {
+  final Value<String> id;
+  final Value<String> folderId;
+  final Value<String> role;
+  final Value<String> content;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const StudyChatRowsCompanion({
+    this.id = const Value.absent(),
+    this.folderId = const Value.absent(),
+    this.role = const Value.absent(),
+    this.content = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  StudyChatRowsCompanion.insert({
+    required String id,
+    required String folderId,
+    required String role,
+    required String content,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       folderId = Value(folderId),
+       role = Value(role),
+       content = Value(content),
+       createdAt = Value(createdAt);
+  static Insertable<StudyChatRecord> custom({
+    Expression<String>? id,
+    Expression<String>? folderId,
+    Expression<String>? role,
+    Expression<String>? content,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (folderId != null) 'folder_id': folderId,
+      if (role != null) 'role': role,
+      if (content != null) 'content': content,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  StudyChatRowsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? folderId,
+    Value<String>? role,
+    Value<String>? content,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return StudyChatRowsCompanion(
+      id: id ?? this.id,
+      folderId: folderId ?? this.folderId,
+      role: role ?? this.role,
+      content: content ?? this.content,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (folderId.present) {
+      map['folder_id'] = Variable<String>(folderId.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyChatRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('folderId: $folderId, ')
+          ..write('role: $role, ')
+          ..write('content: $content, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4379,6 +5993,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $TodoRowsTable todoRows = $TodoRowsTable(this);
   late final $SettingRowsTable settingRows = $SettingRowsTable(this);
+  late final $StudyFolderRowsTable studyFolderRows = $StudyFolderRowsTable(
+    this,
+  );
+  late final $StudyDocumentRowsTable studyDocumentRows =
+      $StudyDocumentRowsTable(this);
+  late final $StudyMeetingLinkRowsTable studyMeetingLinkRows =
+      $StudyMeetingLinkRowsTable(this);
+  late final $StudyChatRowsTable studyChatRows = $StudyChatRowsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4393,6 +6015,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     chatMessageRows,
     todoRows,
     settingRows,
+    studyFolderRows,
+    studyDocumentRows,
+    studyMeetingLinkRows,
+    studyChatRows,
   ];
 }
 
@@ -4581,6 +6207,34 @@ final class $$MeetingRowsTableReferences
     ).filter((f) => f.meetingId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_todoRowsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $StudyMeetingLinkRowsTable,
+    List<StudyMeetingLinkRecord>
+  >
+  _studyMeetingLinkRowsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.studyMeetingLinkRows,
+        aliasName: $_aliasNameGenerator(
+          db.meetingRows.id,
+          db.studyMeetingLinkRows.meetingId,
+        ),
+      );
+
+  $$StudyMeetingLinkRowsTableProcessedTableManager
+  get studyMeetingLinkRowsRefs {
+    final manager = $$StudyMeetingLinkRowsTableTableManager(
+      $_db,
+      $_db.studyMeetingLinkRows,
+    ).filter((f) => f.meetingId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _studyMeetingLinkRowsRefsTable($_db),
+    );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -4823,6 +6477,31 @@ class $$MeetingRowsTableFilterComposer
           }) => $$TodoRowsTableFilterComposer(
             $db: $db,
             $table: $db.todoRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> studyMeetingLinkRowsRefs(
+    Expression<bool> Function($$StudyMeetingLinkRowsTableFilterComposer f) f,
+  ) {
+    final $$StudyMeetingLinkRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.studyMeetingLinkRows,
+      getReferencedColumn: (t) => t.meetingId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyMeetingLinkRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.studyMeetingLinkRows,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -5131,6 +6810,32 @@ class $$MeetingRowsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> studyMeetingLinkRowsRefs<T extends Object>(
+    Expression<T> Function($$StudyMeetingLinkRowsTableAnnotationComposer a) f,
+  ) {
+    final $$StudyMeetingLinkRowsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.studyMeetingLinkRows,
+          getReferencedColumn: (t) => t.meetingId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StudyMeetingLinkRowsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.studyMeetingLinkRows,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$MeetingRowsTableTableManager
@@ -5154,6 +6859,7 @@ class $$MeetingRowsTableTableManager
             bool decisionRowsRefs,
             bool chatMessageRowsRefs,
             bool todoRowsRefs,
+            bool studyMeetingLinkRowsRefs,
           })
         > {
   $$MeetingRowsTableTableManager(_$AppDatabase db, $MeetingRowsTable table)
@@ -5244,6 +6950,7 @@ class $$MeetingRowsTableTableManager
                 decisionRowsRefs = false,
                 chatMessageRowsRefs = false,
                 todoRowsRefs = false,
+                studyMeetingLinkRowsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -5255,6 +6962,7 @@ class $$MeetingRowsTableTableManager
                     if (decisionRowsRefs) db.decisionRows,
                     if (chatMessageRowsRefs) db.chatMessageRows,
                     if (todoRowsRefs) db.todoRows,
+                    if (studyMeetingLinkRowsRefs) db.studyMeetingLinkRows,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -5406,6 +7114,27 @@ class $$MeetingRowsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (studyMeetingLinkRowsRefs)
+                        await $_getPrefetchedData<
+                          MeetingRecord,
+                          $MeetingRowsTable,
+                          StudyMeetingLinkRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$MeetingRowsTableReferences
+                              ._studyMeetingLinkRowsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$MeetingRowsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).studyMeetingLinkRowsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.meetingId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -5434,6 +7163,7 @@ typedef $$MeetingRowsTableProcessedTableManager =
         bool decisionRowsRefs,
         bool chatMessageRowsRefs,
         bool todoRowsRefs,
+        bool studyMeetingLinkRowsRefs,
       })
     >;
 typedef $$AudioAssetRowsTableCreateCompanionBuilder =
@@ -8209,6 +9939,1809 @@ typedef $$SettingRowsTableProcessedTableManager =
       SettingRecord,
       PrefetchHooks Function()
     >;
+typedef $$StudyFolderRowsTableCreateCompanionBuilder =
+    StudyFolderRowsCompanion Function({
+      required String id,
+      Value<String?> parentId,
+      required String name,
+      Value<String?> description,
+      Value<String> color,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$StudyFolderRowsTableUpdateCompanionBuilder =
+    StudyFolderRowsCompanion Function({
+      Value<String> id,
+      Value<String?> parentId,
+      Value<String> name,
+      Value<String?> description,
+      Value<String> color,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$StudyFolderRowsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $StudyFolderRowsTable,
+          StudyFolderRecord
+        > {
+  $$StudyFolderRowsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $StudyFolderRowsTable _parentIdTable(_$AppDatabase db) =>
+      db.studyFolderRows.createAlias(
+        $_aliasNameGenerator(
+          db.studyFolderRows.parentId,
+          db.studyFolderRows.id,
+        ),
+      );
+
+  $$StudyFolderRowsTableProcessedTableManager? get parentId {
+    final $_column = $_itemColumn<String>('parent_id');
+    if ($_column == null) return null;
+    final manager = $$StudyFolderRowsTableTableManager(
+      $_db,
+      $_db.studyFolderRows,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_parentIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$StudyDocumentRowsTable, List<StudyDocumentRecord>>
+  _studyDocumentRowsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.studyDocumentRows,
+        aliasName: $_aliasNameGenerator(
+          db.studyFolderRows.id,
+          db.studyDocumentRows.folderId,
+        ),
+      );
+
+  $$StudyDocumentRowsTableProcessedTableManager get studyDocumentRowsRefs {
+    final manager = $$StudyDocumentRowsTableTableManager(
+      $_db,
+      $_db.studyDocumentRows,
+    ).filter((f) => f.folderId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _studyDocumentRowsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $StudyMeetingLinkRowsTable,
+    List<StudyMeetingLinkRecord>
+  >
+  _studyMeetingLinkRowsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.studyMeetingLinkRows,
+        aliasName: $_aliasNameGenerator(
+          db.studyFolderRows.id,
+          db.studyMeetingLinkRows.folderId,
+        ),
+      );
+
+  $$StudyMeetingLinkRowsTableProcessedTableManager
+  get studyMeetingLinkRowsRefs {
+    final manager = $$StudyMeetingLinkRowsTableTableManager(
+      $_db,
+      $_db.studyMeetingLinkRows,
+    ).filter((f) => f.folderId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _studyMeetingLinkRowsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$StudyChatRowsTable, List<StudyChatRecord>>
+  _studyChatRowsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.studyChatRows,
+    aliasName: $_aliasNameGenerator(
+      db.studyFolderRows.id,
+      db.studyChatRows.folderId,
+    ),
+  );
+
+  $$StudyChatRowsTableProcessedTableManager get studyChatRowsRefs {
+    final manager = $$StudyChatRowsTableTableManager(
+      $_db,
+      $_db.studyChatRows,
+    ).filter((f) => f.folderId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_studyChatRowsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$StudyFolderRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $StudyFolderRowsTable> {
+  $$StudyFolderRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$StudyFolderRowsTableFilterComposer get parentId {
+    final $$StudyFolderRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.parentId,
+      referencedTable: $db.studyFolderRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyFolderRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.studyFolderRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> studyDocumentRowsRefs(
+    Expression<bool> Function($$StudyDocumentRowsTableFilterComposer f) f,
+  ) {
+    final $$StudyDocumentRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.studyDocumentRows,
+      getReferencedColumn: (t) => t.folderId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyDocumentRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.studyDocumentRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> studyMeetingLinkRowsRefs(
+    Expression<bool> Function($$StudyMeetingLinkRowsTableFilterComposer f) f,
+  ) {
+    final $$StudyMeetingLinkRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.studyMeetingLinkRows,
+      getReferencedColumn: (t) => t.folderId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyMeetingLinkRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.studyMeetingLinkRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> studyChatRowsRefs(
+    Expression<bool> Function($$StudyChatRowsTableFilterComposer f) f,
+  ) {
+    final $$StudyChatRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.studyChatRows,
+      getReferencedColumn: (t) => t.folderId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyChatRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.studyChatRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$StudyFolderRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $StudyFolderRowsTable> {
+  $$StudyFolderRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$StudyFolderRowsTableOrderingComposer get parentId {
+    final $$StudyFolderRowsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.parentId,
+      referencedTable: $db.studyFolderRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyFolderRowsTableOrderingComposer(
+            $db: $db,
+            $table: $db.studyFolderRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StudyFolderRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $StudyFolderRowsTable> {
+  $$StudyFolderRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get color =>
+      $composableBuilder(column: $table.color, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$StudyFolderRowsTableAnnotationComposer get parentId {
+    final $$StudyFolderRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.parentId,
+      referencedTable: $db.studyFolderRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyFolderRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.studyFolderRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> studyDocumentRowsRefs<T extends Object>(
+    Expression<T> Function($$StudyDocumentRowsTableAnnotationComposer a) f,
+  ) {
+    final $$StudyDocumentRowsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.studyDocumentRows,
+          getReferencedColumn: (t) => t.folderId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StudyDocumentRowsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.studyDocumentRows,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> studyMeetingLinkRowsRefs<T extends Object>(
+    Expression<T> Function($$StudyMeetingLinkRowsTableAnnotationComposer a) f,
+  ) {
+    final $$StudyMeetingLinkRowsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.studyMeetingLinkRows,
+          getReferencedColumn: (t) => t.folderId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StudyMeetingLinkRowsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.studyMeetingLinkRows,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> studyChatRowsRefs<T extends Object>(
+    Expression<T> Function($$StudyChatRowsTableAnnotationComposer a) f,
+  ) {
+    final $$StudyChatRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.studyChatRows,
+      getReferencedColumn: (t) => t.folderId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyChatRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.studyChatRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$StudyFolderRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $StudyFolderRowsTable,
+          StudyFolderRecord,
+          $$StudyFolderRowsTableFilterComposer,
+          $$StudyFolderRowsTableOrderingComposer,
+          $$StudyFolderRowsTableAnnotationComposer,
+          $$StudyFolderRowsTableCreateCompanionBuilder,
+          $$StudyFolderRowsTableUpdateCompanionBuilder,
+          (StudyFolderRecord, $$StudyFolderRowsTableReferences),
+          StudyFolderRecord,
+          PrefetchHooks Function({
+            bool parentId,
+            bool studyDocumentRowsRefs,
+            bool studyMeetingLinkRowsRefs,
+            bool studyChatRowsRefs,
+          })
+        > {
+  $$StudyFolderRowsTableTableManager(
+    _$AppDatabase db,
+    $StudyFolderRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StudyFolderRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$StudyFolderRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$StudyFolderRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String?> parentId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<String> color = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => StudyFolderRowsCompanion(
+                id: id,
+                parentId: parentId,
+                name: name,
+                description: description,
+                color: color,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String?> parentId = const Value.absent(),
+                required String name,
+                Value<String?> description = const Value.absent(),
+                Value<String> color = const Value.absent(),
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => StudyFolderRowsCompanion.insert(
+                id: id,
+                parentId: parentId,
+                name: name,
+                description: description,
+                color: color,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$StudyFolderRowsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                parentId = false,
+                studyDocumentRowsRefs = false,
+                studyMeetingLinkRowsRefs = false,
+                studyChatRowsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (studyDocumentRowsRefs) db.studyDocumentRows,
+                    if (studyMeetingLinkRowsRefs) db.studyMeetingLinkRows,
+                    if (studyChatRowsRefs) db.studyChatRows,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (parentId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.parentId,
+                                    referencedTable:
+                                        $$StudyFolderRowsTableReferences
+                                            ._parentIdTable(db),
+                                    referencedColumn:
+                                        $$StudyFolderRowsTableReferences
+                                            ._parentIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (studyDocumentRowsRefs)
+                        await $_getPrefetchedData<
+                          StudyFolderRecord,
+                          $StudyFolderRowsTable,
+                          StudyDocumentRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$StudyFolderRowsTableReferences
+                              ._studyDocumentRowsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$StudyFolderRowsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).studyDocumentRowsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.folderId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (studyMeetingLinkRowsRefs)
+                        await $_getPrefetchedData<
+                          StudyFolderRecord,
+                          $StudyFolderRowsTable,
+                          StudyMeetingLinkRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$StudyFolderRowsTableReferences
+                              ._studyMeetingLinkRowsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$StudyFolderRowsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).studyMeetingLinkRowsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.folderId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (studyChatRowsRefs)
+                        await $_getPrefetchedData<
+                          StudyFolderRecord,
+                          $StudyFolderRowsTable,
+                          StudyChatRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$StudyFolderRowsTableReferences
+                              ._studyChatRowsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$StudyFolderRowsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).studyChatRowsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.folderId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$StudyFolderRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $StudyFolderRowsTable,
+      StudyFolderRecord,
+      $$StudyFolderRowsTableFilterComposer,
+      $$StudyFolderRowsTableOrderingComposer,
+      $$StudyFolderRowsTableAnnotationComposer,
+      $$StudyFolderRowsTableCreateCompanionBuilder,
+      $$StudyFolderRowsTableUpdateCompanionBuilder,
+      (StudyFolderRecord, $$StudyFolderRowsTableReferences),
+      StudyFolderRecord,
+      PrefetchHooks Function({
+        bool parentId,
+        bool studyDocumentRowsRefs,
+        bool studyMeetingLinkRowsRefs,
+        bool studyChatRowsRefs,
+      })
+    >;
+typedef $$StudyDocumentRowsTableCreateCompanionBuilder =
+    StudyDocumentRowsCompanion Function({
+      required String id,
+      required String folderId,
+      required String title,
+      required String kind,
+      required String sourcePath,
+      Value<String?> category,
+      Value<String> extractedText,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$StudyDocumentRowsTableUpdateCompanionBuilder =
+    StudyDocumentRowsCompanion Function({
+      Value<String> id,
+      Value<String> folderId,
+      Value<String> title,
+      Value<String> kind,
+      Value<String> sourcePath,
+      Value<String?> category,
+      Value<String> extractedText,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$StudyDocumentRowsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $StudyDocumentRowsTable,
+          StudyDocumentRecord
+        > {
+  $$StudyDocumentRowsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $StudyFolderRowsTable _folderIdTable(_$AppDatabase db) =>
+      db.studyFolderRows.createAlias(
+        $_aliasNameGenerator(
+          db.studyDocumentRows.folderId,
+          db.studyFolderRows.id,
+        ),
+      );
+
+  $$StudyFolderRowsTableProcessedTableManager get folderId {
+    final $_column = $_itemColumn<String>('folder_id')!;
+
+    final manager = $$StudyFolderRowsTableTableManager(
+      $_db,
+      $_db.studyFolderRows,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_folderIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$StudyDocumentRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $StudyDocumentRowsTable> {
+  $$StudyDocumentRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourcePath => $composableBuilder(
+    column: $table.sourcePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get extractedText => $composableBuilder(
+    column: $table.extractedText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$StudyFolderRowsTableFilterComposer get folderId {
+    final $$StudyFolderRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.studyFolderRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyFolderRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.studyFolderRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StudyDocumentRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $StudyDocumentRowsTable> {
+  $$StudyDocumentRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourcePath => $composableBuilder(
+    column: $table.sourcePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get extractedText => $composableBuilder(
+    column: $table.extractedText,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$StudyFolderRowsTableOrderingComposer get folderId {
+    final $$StudyFolderRowsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.studyFolderRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyFolderRowsTableOrderingComposer(
+            $db: $db,
+            $table: $db.studyFolderRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StudyDocumentRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $StudyDocumentRowsTable> {
+  $$StudyDocumentRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get sourcePath => $composableBuilder(
+    column: $table.sourcePath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get extractedText => $composableBuilder(
+    column: $table.extractedText,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$StudyFolderRowsTableAnnotationComposer get folderId {
+    final $$StudyFolderRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.studyFolderRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyFolderRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.studyFolderRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StudyDocumentRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $StudyDocumentRowsTable,
+          StudyDocumentRecord,
+          $$StudyDocumentRowsTableFilterComposer,
+          $$StudyDocumentRowsTableOrderingComposer,
+          $$StudyDocumentRowsTableAnnotationComposer,
+          $$StudyDocumentRowsTableCreateCompanionBuilder,
+          $$StudyDocumentRowsTableUpdateCompanionBuilder,
+          (StudyDocumentRecord, $$StudyDocumentRowsTableReferences),
+          StudyDocumentRecord,
+          PrefetchHooks Function({bool folderId})
+        > {
+  $$StudyDocumentRowsTableTableManager(
+    _$AppDatabase db,
+    $StudyDocumentRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StudyDocumentRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$StudyDocumentRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$StudyDocumentRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> folderId = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String> sourcePath = const Value.absent(),
+                Value<String?> category = const Value.absent(),
+                Value<String> extractedText = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => StudyDocumentRowsCompanion(
+                id: id,
+                folderId: folderId,
+                title: title,
+                kind: kind,
+                sourcePath: sourcePath,
+                category: category,
+                extractedText: extractedText,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String folderId,
+                required String title,
+                required String kind,
+                required String sourcePath,
+                Value<String?> category = const Value.absent(),
+                Value<String> extractedText = const Value.absent(),
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => StudyDocumentRowsCompanion.insert(
+                id: id,
+                folderId: folderId,
+                title: title,
+                kind: kind,
+                sourcePath: sourcePath,
+                category: category,
+                extractedText: extractedText,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$StudyDocumentRowsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({folderId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (folderId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.folderId,
+                                referencedTable:
+                                    $$StudyDocumentRowsTableReferences
+                                        ._folderIdTable(db),
+                                referencedColumn:
+                                    $$StudyDocumentRowsTableReferences
+                                        ._folderIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$StudyDocumentRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $StudyDocumentRowsTable,
+      StudyDocumentRecord,
+      $$StudyDocumentRowsTableFilterComposer,
+      $$StudyDocumentRowsTableOrderingComposer,
+      $$StudyDocumentRowsTableAnnotationComposer,
+      $$StudyDocumentRowsTableCreateCompanionBuilder,
+      $$StudyDocumentRowsTableUpdateCompanionBuilder,
+      (StudyDocumentRecord, $$StudyDocumentRowsTableReferences),
+      StudyDocumentRecord,
+      PrefetchHooks Function({bool folderId})
+    >;
+typedef $$StudyMeetingLinkRowsTableCreateCompanionBuilder =
+    StudyMeetingLinkRowsCompanion Function({
+      required String id,
+      required String folderId,
+      required String meetingId,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$StudyMeetingLinkRowsTableUpdateCompanionBuilder =
+    StudyMeetingLinkRowsCompanion Function({
+      Value<String> id,
+      Value<String> folderId,
+      Value<String> meetingId,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$StudyMeetingLinkRowsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $StudyMeetingLinkRowsTable,
+          StudyMeetingLinkRecord
+        > {
+  $$StudyMeetingLinkRowsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $StudyFolderRowsTable _folderIdTable(_$AppDatabase db) =>
+      db.studyFolderRows.createAlias(
+        $_aliasNameGenerator(
+          db.studyMeetingLinkRows.folderId,
+          db.studyFolderRows.id,
+        ),
+      );
+
+  $$StudyFolderRowsTableProcessedTableManager get folderId {
+    final $_column = $_itemColumn<String>('folder_id')!;
+
+    final manager = $$StudyFolderRowsTableTableManager(
+      $_db,
+      $_db.studyFolderRows,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_folderIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $MeetingRowsTable _meetingIdTable(_$AppDatabase db) =>
+      db.meetingRows.createAlias(
+        $_aliasNameGenerator(
+          db.studyMeetingLinkRows.meetingId,
+          db.meetingRows.id,
+        ),
+      );
+
+  $$MeetingRowsTableProcessedTableManager get meetingId {
+    final $_column = $_itemColumn<String>('meeting_id')!;
+
+    final manager = $$MeetingRowsTableTableManager(
+      $_db,
+      $_db.meetingRows,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_meetingIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$StudyMeetingLinkRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $StudyMeetingLinkRowsTable> {
+  $$StudyMeetingLinkRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$StudyFolderRowsTableFilterComposer get folderId {
+    final $$StudyFolderRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.studyFolderRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyFolderRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.studyFolderRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$MeetingRowsTableFilterComposer get meetingId {
+    final $$MeetingRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.meetingId,
+      referencedTable: $db.meetingRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MeetingRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.meetingRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StudyMeetingLinkRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $StudyMeetingLinkRowsTable> {
+  $$StudyMeetingLinkRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$StudyFolderRowsTableOrderingComposer get folderId {
+    final $$StudyFolderRowsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.studyFolderRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyFolderRowsTableOrderingComposer(
+            $db: $db,
+            $table: $db.studyFolderRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$MeetingRowsTableOrderingComposer get meetingId {
+    final $$MeetingRowsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.meetingId,
+      referencedTable: $db.meetingRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MeetingRowsTableOrderingComposer(
+            $db: $db,
+            $table: $db.meetingRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StudyMeetingLinkRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $StudyMeetingLinkRowsTable> {
+  $$StudyMeetingLinkRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$StudyFolderRowsTableAnnotationComposer get folderId {
+    final $$StudyFolderRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.studyFolderRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyFolderRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.studyFolderRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$MeetingRowsTableAnnotationComposer get meetingId {
+    final $$MeetingRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.meetingId,
+      referencedTable: $db.meetingRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MeetingRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.meetingRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StudyMeetingLinkRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $StudyMeetingLinkRowsTable,
+          StudyMeetingLinkRecord,
+          $$StudyMeetingLinkRowsTableFilterComposer,
+          $$StudyMeetingLinkRowsTableOrderingComposer,
+          $$StudyMeetingLinkRowsTableAnnotationComposer,
+          $$StudyMeetingLinkRowsTableCreateCompanionBuilder,
+          $$StudyMeetingLinkRowsTableUpdateCompanionBuilder,
+          (StudyMeetingLinkRecord, $$StudyMeetingLinkRowsTableReferences),
+          StudyMeetingLinkRecord,
+          PrefetchHooks Function({bool folderId, bool meetingId})
+        > {
+  $$StudyMeetingLinkRowsTableTableManager(
+    _$AppDatabase db,
+    $StudyMeetingLinkRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StudyMeetingLinkRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$StudyMeetingLinkRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$StudyMeetingLinkRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> folderId = const Value.absent(),
+                Value<String> meetingId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => StudyMeetingLinkRowsCompanion(
+                id: id,
+                folderId: folderId,
+                meetingId: meetingId,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String folderId,
+                required String meetingId,
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => StudyMeetingLinkRowsCompanion.insert(
+                id: id,
+                folderId: folderId,
+                meetingId: meetingId,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$StudyMeetingLinkRowsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({folderId = false, meetingId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (folderId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.folderId,
+                                referencedTable:
+                                    $$StudyMeetingLinkRowsTableReferences
+                                        ._folderIdTable(db),
+                                referencedColumn:
+                                    $$StudyMeetingLinkRowsTableReferences
+                                        ._folderIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (meetingId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.meetingId,
+                                referencedTable:
+                                    $$StudyMeetingLinkRowsTableReferences
+                                        ._meetingIdTable(db),
+                                referencedColumn:
+                                    $$StudyMeetingLinkRowsTableReferences
+                                        ._meetingIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$StudyMeetingLinkRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $StudyMeetingLinkRowsTable,
+      StudyMeetingLinkRecord,
+      $$StudyMeetingLinkRowsTableFilterComposer,
+      $$StudyMeetingLinkRowsTableOrderingComposer,
+      $$StudyMeetingLinkRowsTableAnnotationComposer,
+      $$StudyMeetingLinkRowsTableCreateCompanionBuilder,
+      $$StudyMeetingLinkRowsTableUpdateCompanionBuilder,
+      (StudyMeetingLinkRecord, $$StudyMeetingLinkRowsTableReferences),
+      StudyMeetingLinkRecord,
+      PrefetchHooks Function({bool folderId, bool meetingId})
+    >;
+typedef $$StudyChatRowsTableCreateCompanionBuilder =
+    StudyChatRowsCompanion Function({
+      required String id,
+      required String folderId,
+      required String role,
+      required String content,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$StudyChatRowsTableUpdateCompanionBuilder =
+    StudyChatRowsCompanion Function({
+      Value<String> id,
+      Value<String> folderId,
+      Value<String> role,
+      Value<String> content,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$StudyChatRowsTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $StudyChatRowsTable, StudyChatRecord> {
+  $$StudyChatRowsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $StudyFolderRowsTable _folderIdTable(_$AppDatabase db) =>
+      db.studyFolderRows.createAlias(
+        $_aliasNameGenerator(db.studyChatRows.folderId, db.studyFolderRows.id),
+      );
+
+  $$StudyFolderRowsTableProcessedTableManager get folderId {
+    final $_column = $_itemColumn<String>('folder_id')!;
+
+    final manager = $$StudyFolderRowsTableTableManager(
+      $_db,
+      $_db.studyFolderRows,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_folderIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$StudyChatRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $StudyChatRowsTable> {
+  $$StudyChatRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$StudyFolderRowsTableFilterComposer get folderId {
+    final $$StudyFolderRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.studyFolderRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyFolderRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.studyFolderRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StudyChatRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $StudyChatRowsTable> {
+  $$StudyChatRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$StudyFolderRowsTableOrderingComposer get folderId {
+    final $$StudyFolderRowsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.studyFolderRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyFolderRowsTableOrderingComposer(
+            $db: $db,
+            $table: $db.studyFolderRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StudyChatRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $StudyChatRowsTable> {
+  $$StudyChatRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$StudyFolderRowsTableAnnotationComposer get folderId {
+    final $$StudyFolderRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.studyFolderRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StudyFolderRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.studyFolderRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$StudyChatRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $StudyChatRowsTable,
+          StudyChatRecord,
+          $$StudyChatRowsTableFilterComposer,
+          $$StudyChatRowsTableOrderingComposer,
+          $$StudyChatRowsTableAnnotationComposer,
+          $$StudyChatRowsTableCreateCompanionBuilder,
+          $$StudyChatRowsTableUpdateCompanionBuilder,
+          (StudyChatRecord, $$StudyChatRowsTableReferences),
+          StudyChatRecord,
+          PrefetchHooks Function({bool folderId})
+        > {
+  $$StudyChatRowsTableTableManager(_$AppDatabase db, $StudyChatRowsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StudyChatRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$StudyChatRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$StudyChatRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> folderId = const Value.absent(),
+                Value<String> role = const Value.absent(),
+                Value<String> content = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => StudyChatRowsCompanion(
+                id: id,
+                folderId: folderId,
+                role: role,
+                content: content,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String folderId,
+                required String role,
+                required String content,
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => StudyChatRowsCompanion.insert(
+                id: id,
+                folderId: folderId,
+                role: role,
+                content: content,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$StudyChatRowsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({folderId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (folderId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.folderId,
+                                referencedTable: $$StudyChatRowsTableReferences
+                                    ._folderIdTable(db),
+                                referencedColumn: $$StudyChatRowsTableReferences
+                                    ._folderIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$StudyChatRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $StudyChatRowsTable,
+      StudyChatRecord,
+      $$StudyChatRowsTableFilterComposer,
+      $$StudyChatRowsTableOrderingComposer,
+      $$StudyChatRowsTableAnnotationComposer,
+      $$StudyChatRowsTableCreateCompanionBuilder,
+      $$StudyChatRowsTableUpdateCompanionBuilder,
+      (StudyChatRecord, $$StudyChatRowsTableReferences),
+      StudyChatRecord,
+      PrefetchHooks Function({bool folderId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -8231,4 +11764,12 @@ class $AppDatabaseManager {
       $$TodoRowsTableTableManager(_db, _db.todoRows);
   $$SettingRowsTableTableManager get settingRows =>
       $$SettingRowsTableTableManager(_db, _db.settingRows);
+  $$StudyFolderRowsTableTableManager get studyFolderRows =>
+      $$StudyFolderRowsTableTableManager(_db, _db.studyFolderRows);
+  $$StudyDocumentRowsTableTableManager get studyDocumentRows =>
+      $$StudyDocumentRowsTableTableManager(_db, _db.studyDocumentRows);
+  $$StudyMeetingLinkRowsTableTableManager get studyMeetingLinkRows =>
+      $$StudyMeetingLinkRowsTableTableManager(_db, _db.studyMeetingLinkRows);
+  $$StudyChatRowsTableTableManager get studyChatRows =>
+      $$StudyChatRowsTableTableManager(_db, _db.studyChatRows);
 }

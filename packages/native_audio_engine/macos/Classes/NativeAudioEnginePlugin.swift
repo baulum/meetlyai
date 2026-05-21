@@ -414,11 +414,11 @@ public class NativeAudioEnginePlugin: NSObject, FlutterPlugin {
     guard let directory = outputDirectory else { return [] }
     let durationMs = elapsedMilliseconds()
     let chunks = try chunkDirectory(directory)
-    micChunkFile = nil
-    systemChunkFile = nil
-
+    
     var assets: [[String: Any]] = []
     let currentIndex = chunkIndex
+    
+    // Check both mic and system chunks that are currently being written to
     for source in ["mic", "system"] {
       let url = chunks.appendingPathComponent(
         "\(source)_\(String(format: "%06d", currentIndex)).wav"
@@ -431,8 +431,13 @@ public class NativeAudioEnginePlugin: NSObject, FlutterPlugin {
         }
       }
     }
-
+    
+    // Close current chunk files before rotating
+    micChunkFile = nil
+    systemChunkFile = nil
+    
     chunkIndex += 1
+    
     if continueCapturing {
       if let directory = outputDirectory {
         let inputFormat = engine.inputNode.outputFormat(forBus: 0)

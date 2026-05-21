@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -66,6 +68,7 @@ class RecordingController extends Notifier<RecordingUiState> {
     }
     state = state.copyWith(isBusy: true, clearError: true);
     try {
+      debugPrint('DEBUG: startNewMeeting started');
       final repository = ref.read(meetingRepositoryProvider);
       final recorder = ref.read(audioRecorderProvider);
       final meeting = await repository.createMeeting(title: 'Untitled meeting');
@@ -86,9 +89,14 @@ class RecordingController extends Notifier<RecordingUiState> {
           captureSystemAudio: true,
         ),
       );
+      debugPrint(
+        'DEBUG: recorder.start completed, now calling _startChunkTranscription',
+      );
       await _startChunkTranscription(meeting.id);
+      debugPrint('DEBUG: _startChunkTranscription completed');
       state = state.copyWith(isBusy: false, clearError: true);
     } on Object catch (error) {
+      debugPrint('DEBUG: startNewMeeting error: $error');
       state = state.copyWith(isBusy: false, errorMessage: error.toString());
     }
   }
@@ -159,6 +167,7 @@ class RecordingController extends Notifier<RecordingUiState> {
           modelPath.trim().isNotEmpty &&
           _transcribedChunkPaths.isEmpty) {
         final language = await settings.getPreferredLanguage() ?? 'auto';
+        final executablePath = await settings.getWhisperExecutablePath();
         await for (final segment
             in ref
                 .read(transcriptionEngineProvider)
@@ -168,6 +177,7 @@ class RecordingController extends Notifier<RecordingUiState> {
                     audioAssets: assets,
                     modelPath: modelPath,
                     languageCode: language,
+                    executablePath: executablePath,
                   ),
                 )) {
           await repository.saveTranscriptSegment(segment);
@@ -238,19 +248,17 @@ class RecordingController extends Notifier<RecordingUiState> {
       final summary = await repository.getSummary(meetingId);
       final context = await repository.searchTranscript(meetingId, trimmed);
       final messages = await repository.getChatMessages(meetingId);
+      final llmService = await ref.watch(llmServiceProvider.future);
       final buffer = StringBuffer();
-      await for (final chunk
-          in ref
-              .read(llmServiceProvider)
-              .streamMeetingAnswer(
-                MeetingChatRequest(
-                  meeting: meeting,
-                  summary: summary,
-                  transcriptContext: context,
-                  messages: messages,
-                  question: trimmed,
-                ),
-              )) {
+      await for (final chunk in llmService.streamMeetingAnswer(
+        MeetingChatRequest(
+          meeting: meeting,
+          summary: summary,
+          transcriptContext: context,
+          messages: messages,
+          question: trimmed,
+        ),
+      )) {
         buffer.write(chunk);
         assistantMessage = assistantMessage.copyWith(
           content: buffer.toString(),
@@ -337,9 +345,11 @@ class RecordingController extends Notifier<RecordingUiState> {
     await repository.upsertMeeting(
       meeting.copyWith(status: MeetingStatus.summarizing),
     );
-    final summary = await ref
-        .read(llmServiceProvider)
-        .summarizeMeeting(meeting: meeting, transcript: transcript);
+    final llmService = await ref.watch(llmServiceProvider.future);
+    final summary = await llmService.summarizeMeeting(
+      meeting: meeting,
+      transcript: transcript,
+    );
     await repository.saveSummary(summary);
   }
 
@@ -365,20 +375,31 @@ class RecordingController extends Notifier<RecordingUiState> {
     final seconds = await ref
         .read(settingsRepositoryProvider)
         .getChunkTranscriptionIntervalSeconds();
-    _chunkTranscriptionTimer = Timer.periodic(
-      Duration(seconds: seconds),
-      (_) => _flushTranscriptionChunks(meetingId),
+    debugPrint(
+      'DEBUG: _startChunkTranscription initialized with interval: ${seconds}s',
     );
+    _chunkTranscriptionTimer = Timer.periodic(Duration(seconds: seconds), (_) {
+      debugPrint('DEBUG: Timer fired, calling _flushTranscriptionChunks');
+      _flushTranscriptionChunks(meetingId);
+    });
+    debugPrint('DEBUG: Timer started for $meetingId');
   }
 
   Future<void> _flushTranscriptionChunks(
     String meetingId, {
     bool force = false,
   }) async {
+    debugPrint(
+      'DEBUG: _flushTranscriptionChunks called (force=$force, isTranscribing=$_isTranscribingChunk)',
+    );
     if (_isTranscribingChunk) {
+      debugPrint('DEBUG: Already transcribing, skipping');
       return;
     }
-    if (!force && state.snapshot?.status != MeetingStatus.recording) {
+    final status = state.snapshot?.status;
+    debugPrint('DEBUG: Current status: $status');
+    if (!force && status != null && status != MeetingStatus.recording) {
+      debugPrint('DEBUG: Status is not recording, skipping');
       return;
     }
     _isTranscribingChunk = true;
@@ -386,33 +407,70 @@ class RecordingController extends Notifier<RecordingUiState> {
       final settings = ref.read(settingsRepositoryProvider);
       final modelPath = await settings.getWhisperModelPath();
       if (modelPath == null || modelPath.trim().isEmpty) {
+        debugPrint('DEBUG: No model path configured, skipping');
         return;
       }
+      final executablePath = await settings.getWhisperExecutablePath();
 
       final chunks = await ref
           .read(audioRecorderProvider)
           .flushTranscriptionChunks();
       final freshChunks = chunks
-          .where((asset) => _transcribedChunkPaths.add(asset.path))
+          .where((asset) => !_transcribedChunkPaths.contains(asset.path))
           .toList(growable: false);
+      if (freshChunks.isNotEmpty) {
+        debugPrint(
+          'DEBUG: flushTranscriptionChunks got ${freshChunks.length} fresh chunks',
+        );
+        for (final asset in freshChunks) {
+          debugPrint(
+            '  - ${asset.source}: ${asset.path} (${asset.byteSize} bytes)',
+          );
+        }
+      } else {
+        debugPrint(
+          'DEBUG: flushTranscriptionChunks returned no fresh chunks (total received: ${chunks.length})',
+        );
+      }
+
       if (freshChunks.isEmpty) {
         return;
       }
 
       final language = await settings.getPreferredLanguage() ?? 'auto';
+      final chunkIntervalMs =
+          (await settings.getChunkTranscriptionIntervalSeconds()) * 1000;
       final repository = ref.read(meetingRepositoryProvider);
-      await for (final segment
-          in ref
-              .read(transcriptionEngineProvider)
-              .transcribe(
-                TranscriptionRequest(
-                  meetingId: meetingId,
-                  audioAssets: freshChunks,
-                  modelPath: modelPath,
-                  languageCode: language,
-                ),
-              )) {
-        await repository.saveTranscriptSegment(segment);
+      try {
+        debugPrint(
+          'DEBUG: Starting transcription of ${freshChunks.length} chunks with model: $modelPath',
+        );
+        await for (final segment
+            in ref
+                .read(transcriptionEngineProvider)
+                .transcribe(
+                  TranscriptionRequest(
+                    meetingId: meetingId,
+                    audioAssets: freshChunks,
+                    modelPath: modelPath,
+                    languageCode: language,
+                    executablePath: executablePath,
+                    chunkOffsetIntervalMs: chunkIntervalMs,
+                  ),
+                )) {
+          debugPrint(
+            'DEBUG: Transcribed segment: ${segment.text.substring(0, min(50, segment.text.length))}...',
+          );
+          await repository.saveTranscriptSegment(segment);
+        }
+      } on Object catch (error) {
+        debugPrint('DEBUG: Transcription error: $error');
+        state = state.copyWith(errorMessage: error.toString());
+        return;
+      }
+
+      for (final asset in freshChunks) {
+        _transcribedChunkPaths.add(asset.path);
       }
     } finally {
       _isTranscribingChunk = false;

@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../application/providers.dart';
 import '../../domain/models/meeting_models.dart';
 import '../../utils/formatters.dart';
+import '../widgets/chat_markdown.dart';
 
 enum _MeetingTab { transcript, summary, chat }
 
@@ -28,9 +29,23 @@ class _MeetingChatViewState extends ConsumerState<MeetingChatView> {
   final _scrollController = ScrollController();
   final _chatScrollController = ScrollController();
   _MeetingTab _selectedTab = _MeetingTab.transcript;
+  int _lastTranscriptSegmentCount = 0;
+  int _lastChatMessageCount = 0;
+  bool _transcriptStickToBottom = true;
+  bool _showTranscriptJumpToBottom = false;
+  bool _showChatJumpToBottom = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_handleTranscriptScroll);
+    _chatScrollController.addListener(_handleChatScroll);
+  }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_handleTranscriptScroll);
+    _chatScrollController.removeListener(_handleChatScroll);
     _controller.dispose();
     _scrollController.dispose();
     _chatScrollController.dispose();
@@ -48,6 +63,8 @@ class _MeetingChatViewState extends ConsumerState<MeetingChatView> {
     final summary = summaryAsync.value;
     final transcript = transcriptAsync.value ?? const [];
     final messages = chatAsync.value ?? const [];
+    _scheduleTranscriptAutoScroll(transcript.length);
+    _scheduleChatAutoScroll(messages.length);
 
     return Column(
       children: [
@@ -67,62 +84,76 @@ class _MeetingChatViewState extends ConsumerState<MeetingChatView> {
               children: [
                 Positioned.fill(
                   top: 62,
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 180),
-                    switchInCurve: Curves.easeOut,
-                    switchOutCurve: Curves.easeOut,
-                    child: switch (_selectedTab) {
-                      _MeetingTab.transcript => ListView(
-                        key: const ValueKey('transcript-tab'),
-                        controller: _scrollController,
-                        children: [
-                          _TranscriptBlock(
-                            meetingId: widget.meetingId,
-                            status: meeting?.status,
-                            segments: transcript,
-                          ),
-                        ],
-                      ),
-                      _MeetingTab.summary => ListView(
-                        key: const ValueKey('summary-tab'),
-                        children: [
-                          if (meeting?.status == MeetingStatus.summarizing &&
-                              summary == null)
-                            const _SummaryLoadingSection()
-                          else if (summary == null)
-                            const _EmptyTabSection(
-                              title: 'AI Summary',
-                              icon: Icons.auto_awesome,
-                              message:
-                                  'The AI summary appears here after the meeting has been transcribed and analyzed.',
-                            )
-                          else
-                            _SummaryBlock(
-                              summary: summary,
-                              transcript: transcript,
-                              onSummaryChanged: (updated) => ref
-                                  .read(meetingRepositoryProvider)
-                                  .saveSummary(updated),
-                              onRegenerate: () => ref
-                                  .read(recordingControllerProvider.notifier)
-                                  .regenerateSummary(widget.meetingId),
+                  child: switch (_selectedTab) {
+                    _MeetingTab.transcript => Stack(
+                      key: const ValueKey('transcript-tab'),
+                      fit: StackFit.expand,
+                      children: [
+                        ListView(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.only(bottom: 64),
+                          children: [
+                            _TranscriptBlock(
+                              meetingId: widget.meetingId,
+                              status: meeting?.status,
+                              segments: transcript,
                             ),
-                        ],
-                      ),
-                      _MeetingTab.chat => ListView(
-                        key: const ValueKey('chat-tab'),
-                        controller: _chatScrollController,
-                        children: [
-                          _ChatBlock(
+                          ],
+                        ),
+                        if (_showTranscriptJumpToBottom)
+                          Positioned(
+                            right: 18,
+                            bottom: 18,
+                            child: _JumpToBottomButton(
+                              onPressed: () => _scrollTranscriptToBottom(),
+                            ),
+                          ),
+                      ],
+                    ),
+                    _MeetingTab.summary => ListView(
+                      key: const ValueKey('summary-tab'),
+                      children: [
+                        if (meeting?.status == MeetingStatus.summarizing &&
+                            summary == null)
+                          const _SummaryLoadingSection()
+                        else if (summary == null)
+                          const _EmptyTabSection(
+                            title: 'AI Summary',
+                            icon: Icons.auto_awesome,
+                            message:
+                                'The AI summary appears here after the meeting has been transcribed and analyzed.',
+                          )
+                        else
+                          _SummaryBlock(
+                            summary: summary,
+                            transcript: transcript,
+                            onSummaryChanged: (updated) => ref
+                                .read(meetingRepositoryProvider)
+                                .saveSummary(updated),
+                            onRegenerate: () => ref
+                                .read(recordingControllerProvider.notifier)
+                                .regenerateSummary(widget.meetingId),
+                          ),
+                      ],
+                    ),
+                    _MeetingTab.chat => Stack(
+                      key: const ValueKey('chat-tab'),
+                      fit: StackFit.expand,
+                      children: [
+                        Positioned.fill(
+                          child: _ChatBlock(
                             messages: messages,
                             transcript: transcript,
                             controller: _controller,
+                            scrollController: _chatScrollController,
+                            showJumpToBottom: _showChatJumpToBottom,
+                            onJumpToBottom: () => _scrollChatToBottom(),
                             onSend: () => _sendQuestion(),
                           ),
-                        ],
-                      ),
-                    },
-                  ),
+                        ),
+                      ],
+                    ),
+                  },
                 ),
                 Positioned(
                   top: 0,
@@ -133,7 +164,16 @@ class _MeetingChatViewState extends ConsumerState<MeetingChatView> {
                     transcriptCount: transcript.length,
                     hasSummary: summary != null,
                     chatCount: messages.length,
-                    onSelected: (tab) => setState(() => _selectedTab = tab),
+                    onSelected: (tab) {
+                      setState(() => _selectedTab = tab);
+                      if (tab == _MeetingTab.transcript &&
+                          _transcriptStickToBottom) {
+                        _scrollTranscriptToBottom();
+                      }
+                      if (tab == _MeetingTab.chat) {
+                        _scrollChatToBottom();
+                      }
+                    },
                   ),
                 ),
               ],
@@ -144,18 +184,126 @@ class _MeetingChatViewState extends ConsumerState<MeetingChatView> {
     );
   }
 
+  void _scheduleTranscriptAutoScroll(int segmentCount) {
+    if (_selectedTab != _MeetingTab.transcript) {
+      _lastTranscriptSegmentCount = segmentCount;
+      return;
+    }
+    final changed = segmentCount != _lastTranscriptSegmentCount;
+    _lastTranscriptSegmentCount = segmentCount;
+    if (changed && _transcriptStickToBottom) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _scrollTranscriptToBottom(),
+      );
+    }
+  }
+
+  Future<void> _scrollTranscriptToBottom({int attempt = 0}) async {
+    if (!_scrollController.hasClients || !mounted) {
+      return;
+    }
+    final position = _scrollController.position;
+    final target = _safeMaxScrollExtent(position);
+    if (target == null) {
+      if (attempt >= 8) {
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _scrollTranscriptToBottom(attempt: attempt + 1),
+      );
+      return;
+    }
+    _transcriptStickToBottom = true;
+    if (_showTranscriptJumpToBottom && mounted) {
+      setState(() => _showTranscriptJumpToBottom = false);
+    }
+    await _scrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOut,
+    );
+  }
+
   Future<void> _sendQuestion() async {
     final text = _controller.text;
     _controller.clear();
     await ref
         .read(recordingControllerProvider.notifier)
         .sendQuestion(widget.meetingId, text);
-    if (_chatScrollController.hasClients) {
-      await _chatScrollController.animateTo(
-        _chatScrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 260),
-        curve: Curves.easeOut,
+    _scrollChatToBottom();
+  }
+
+  void _scheduleChatAutoScroll(int messageCount) {
+    if (_selectedTab != _MeetingTab.chat) {
+      _lastChatMessageCount = messageCount;
+      return;
+    }
+    final changed = messageCount != _lastChatMessageCount;
+    _lastChatMessageCount = messageCount;
+    if (changed || !_chatScrollController.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _scrollChatToBottom(),
       );
+    }
+  }
+
+  Future<void> _scrollChatToBottom({int attempt = 0}) async {
+    if (!_chatScrollController.hasClients || !mounted) {
+      return;
+    }
+    final position = _chatScrollController.position;
+    final target = _safeMaxScrollExtent(position);
+    if (target == null) {
+      if (attempt >= 8) {
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _scrollChatToBottom(attempt: attempt + 1),
+      );
+      return;
+    }
+    await _chatScrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _handleTranscriptScroll() {
+    if (!_scrollController.hasClients ||
+        _safeMaxScrollExtent(_scrollController.position) == null) {
+      return;
+    }
+    final position = _scrollController.position;
+    final distanceFromBottom =
+        _safeMaxScrollExtent(position)! - position.pixels;
+    final isAwayFromBottom = distanceFromBottom > 120;
+    _transcriptStickToBottom = !isAwayFromBottom;
+    if (isAwayFromBottom != _showTranscriptJumpToBottom && mounted) {
+      setState(() => _showTranscriptJumpToBottom = isAwayFromBottom);
+    }
+  }
+
+  void _handleChatScroll() {
+    if (!_chatScrollController.hasClients ||
+        _safeMaxScrollExtent(_chatScrollController.position) == null) {
+      return;
+    }
+    final position = _chatScrollController.position;
+    final show = _safeMaxScrollExtent(position)! - position.pixels > 120;
+    if (show != _showChatJumpToBottom && mounted) {
+      setState(() => _showChatJumpToBottom = show);
+    }
+  }
+
+  double? _safeMaxScrollExtent(ScrollPosition position) {
+    if (!position.hasContentDimensions) {
+      return null;
+    }
+    try {
+      return position.maxScrollExtent;
+    } on Object {
+      return null;
     }
   }
 }
@@ -1738,77 +1886,106 @@ class _ChatBlock extends StatelessWidget {
     required this.messages,
     required this.transcript,
     required this.controller,
+    required this.scrollController,
+    required this.showJumpToBottom,
+    required this.onJumpToBottom,
     required this.onSend,
   });
 
   final List<ChatMessage> messages;
   final List<TranscriptSegment> transcript;
   final TextEditingController controller;
+  final ScrollController scrollController;
+  final bool showJumpToBottom;
+  final VoidCallback onJumpToBottom;
   final Future<void> Function() onSend;
 
   @override
   Widget build(BuildContext context) {
-    return _Section(
+    return _ChatSection(
       title: 'Meeting chat',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (messages.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: Text(
-                'Ask about tasks, decisions, owners, budget, or risks.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFFB8C0CC),
+          Expanded(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.only(bottom: 58),
+                  children: [
+                    if (messages.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: Text(
+                          'Ask about tasks, decisions, owners, budget, or risks.',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: const Color(0xFFB8C0CC)),
+                        ),
+                      )
+                    else
+                      for (final message in messages)
+                        Align(
+                          alignment: message.role == ChatRole.user
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 720),
+                            margin: const EdgeInsets.symmetric(vertical: 6),
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: message.role == ChatRole.user
+                                  ? Theme.of(context).colorScheme.secondary
+                                        .withValues(alpha: 0.13)
+                                  : const Color(0xFF111419),
+                              border: Border.all(
+                                color: const Color(0xFF2B333D),
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: message.role == ChatRole.assistant
+                                ? ChatMarkdown(
+                                    message.isStreaming &&
+                                            message.content.isEmpty
+                                        ? 'Thinking...'
+                                        : _replaceEvidenceIds(
+                                            message.content,
+                                            transcript,
+                                          ),
+                                  )
+                                : Text(
+                                    message.content,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: const Color(0xFFE7EAEE),
+                                          height: 1.42,
+                                        ),
+                                  ),
+                          ),
+                        ),
+                  ],
                 ),
-              ),
-            )
-          else
-            for (final message in messages)
-              Align(
-                alignment: message.role == ChatRole.user
-                    ? Alignment.centerRight
-                    : Alignment.centerLeft,
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 720),
-                  margin: const EdgeInsets.symmetric(vertical: 6),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: message.role == ChatRole.user
-                        ? Theme.of(
-                            context,
-                          ).colorScheme.secondary.withValues(alpha: 0.13)
-                        : const Color(0xFF111419),
-                    border: Border.all(color: const Color(0xFF2B333D)),
-                    borderRadius: BorderRadius.circular(8),
+                if (showJumpToBottom)
+                  Positioned(
+                    right: 14,
+                    bottom: 14,
+                    child: _JumpToBottomButton(onPressed: onJumpToBottom),
                   ),
-                  child: _ChatMessageText(
-                    message.isStreaming && message.content.isEmpty
-                        ? 'Thinking...'
-                        : _replaceEvidenceIds(message.content, transcript),
-                  ),
-                ),
-              ),
-          const SizedBox(height: 12),
-          _ChatComposer(controller: controller, onSend: onSend),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.only(top: 12),
+            decoration: const BoxDecoration(
+              color: Color(0xFF15191F),
+              border: Border(top: BorderSide(color: Color(0xFF262D36))),
+            ),
+            child: _ChatComposer(controller: controller, onSend: onSend),
+          ),
         ],
-      ),
-    );
-  }
-}
-
-class _ChatMessageText extends StatelessWidget {
-  const _ChatMessageText(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-        color: const Color(0xFFE7EAEE),
-        height: 1.42,
       ),
     );
   }
@@ -1832,14 +2009,20 @@ class _ChatComposer extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: controller,
-              minLines: 1,
-              maxLines: 4,
-              onSubmitted: (_) => onSend(),
-              decoration: const InputDecoration(
-                hintText: 'Ask about decisions, budget, owners, or risks...',
-                prefixIcon: Icon(Icons.auto_awesome),
+            child: CallbackShortcuts(
+              bindings: {
+                const SingleActivator(LogicalKeyboardKey.enter): () => onSend(),
+              },
+              child: TextField(
+                controller: controller,
+                minLines: 1,
+                maxLines: 4,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => onSend(),
+                decoration: const InputDecoration(
+                  hintText: 'Ask about decisions, budget, owners, or risks...',
+                  prefixIcon: Icon(Icons.auto_awesome),
+                ),
               ),
             ),
           ),
@@ -1848,6 +2031,64 @@ class _ChatComposer extends StatelessWidget {
             tooltip: 'Send',
             onPressed: () => onSend(),
             icon: const Icon(Icons.arrow_upward),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _JumpToBottomButton extends StatelessWidget {
+  const _JumpToBottomButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: IconButton.filledTonal(
+        tooltip: 'Nach unten',
+        onPressed: onPressed,
+        icon: const Icon(Icons.keyboard_arrow_down),
+      ),
+    );
+  }
+}
+
+class _ChatSection extends StatelessWidget {
+  const _ChatSection({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: const Color(0xFF15191F),
+                border: Border.all(color: const Color(0xFF262D36)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: child,
+            ),
           ),
         ],
       ),

@@ -42,6 +42,15 @@ class MeetingSidebar extends ConsumerWidget {
                     children: [
                       _NavItem(
                         collapsed: effectiveCollapsed,
+                        selected: section == AppSection.learning,
+                        icon: Icons.school_outlined,
+                        label: 'Lernen',
+                        onTap: () => ref
+                            .read(appSectionProvider.notifier)
+                            .showLearning(),
+                      ),
+                      _NavItem(
+                        collapsed: effectiveCollapsed,
                         selected: section == AppSection.meetings,
                         icon: Icons.forum_outlined,
                         label: 'Meetings',
@@ -204,7 +213,7 @@ class MeetingSidebar extends ConsumerWidget {
       builder: (context) => AlertDialog(
         title: const Text('Delete meeting?'),
         content: Text(
-          'This removes "${meeting.title}" from the local database. Audio files on disk are not deleted yet.',
+          'This removes "${meeting.title}", its transcript, summary, chat, todos, and local audio files. Learning folders and documents stay untouched.',
         ),
         actions: [
           TextButton(

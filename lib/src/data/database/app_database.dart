@@ -133,6 +133,58 @@ class SettingRows extends Table {
   Set<Column<Object>> get primaryKey => {key};
 }
 
+@DataClassName('StudyFolderRecord')
+class StudyFolderRows extends Table {
+  TextColumn get id => text()();
+  TextColumn get parentId =>
+      text().nullable().references(StudyFolderRows, #id)();
+  TextColumn get name => text()();
+  TextColumn get description => text().nullable()();
+  TextColumn get color => text().withDefault(const Constant('teal'))();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('StudyDocumentRecord')
+class StudyDocumentRows extends Table {
+  TextColumn get id => text()();
+  TextColumn get folderId => text().references(StudyFolderRows, #id)();
+  TextColumn get title => text()();
+  TextColumn get kind => text()();
+  TextColumn get sourcePath => text()();
+  TextColumn get category => text().nullable()();
+  TextColumn get extractedText => text().withDefault(const Constant(''))();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('StudyMeetingLinkRecord')
+class StudyMeetingLinkRows extends Table {
+  TextColumn get id => text()();
+  TextColumn get folderId => text().references(StudyFolderRows, #id)();
+  TextColumn get meetingId => text().references(MeetingRows, #id)();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('StudyChatRecord')
+class StudyChatRows extends Table {
+  TextColumn get id => text()();
+  TextColumn get folderId => text().references(StudyFolderRows, #id)();
+  TextColumn get role => text()();
+  TextColumn get content => text()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     MeetingRows,
@@ -144,6 +196,10 @@ class SettingRows extends Table {
     ChatMessageRows,
     TodoRows,
     SettingRows,
+    StudyFolderRows,
+    StudyDocumentRows,
+    StudyMeetingLinkRows,
+    StudyChatRows,
   ],
 )
 final class AppDatabase extends _$AppDatabase {
@@ -159,7 +215,7 @@ final class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -169,14 +225,58 @@ final class AppDatabase extends _$AppDatabase {
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
+      await _ensureStudyFolderParentColumn();
       await _createFtsIndex();
     },
     onUpgrade: (Migrator m, int from, int to) async {
       if (from < 2) {
         await m.createTable(todoRows);
       }
+      if (from < 3) {
+        await m.createTable(studyFolderRows);
+        await m.createTable(studyDocumentRows);
+        await m.createTable(studyMeetingLinkRows);
+        await m.createTable(studyChatRows);
+      }
+      if (from == 3) {
+        // Guard against the column already existing (can happen if migrations
+        // ran partially or multiple connections attempted the migration).
+        final tableInfo = await customSelect('PRAGMA table_info(study_folder_rows)').get();
+        final hasParentId = tableInfo.any((row) => row.data['name'] == 'parent_id');
+        if (!hasParentId) {
+          await m.addColumn(studyFolderRows, studyFolderRows.parentId);
+        }
+      }
     },
   );
+
+  Future<void> _ensureStudyFolderParentColumn() async {
+    final tableInfo = await customSelect(
+      'PRAGMA table_info(study_folder_rows)',
+    ).get();
+    if (tableInfo.isEmpty) {
+      return;
+    }
+    final hasParentId = tableInfo.any((row) => row.data['name'] == 'parent_id');
+    if (!hasParentId) {
+      try {
+        await customStatement(
+          'ALTER TABLE study_folder_rows ADD COLUMN parent_id TEXT NULL',
+        );
+      } catch (e) {
+        final msg = e.toString();
+        // SQLite will error with "duplicate column name" if the column was
+        // added concurrently or by a previous migration run. Ignore that
+        // specific error and rethrow anything else.
+        if (msg.contains('duplicate column name') ||
+            msg.contains('already exists')) {
+          // noop
+        } else {
+          rethrow;
+        }
+      }
+    }
+  }
 
   Future<void> _createFtsIndex() {
     return customStatement('''

@@ -7,6 +7,7 @@ class TranscriptionRequest {
     required this.modelPath,
     this.languageCode = 'auto',
     this.executablePath,
+    this.chunkOffsetIntervalMs,
   });
 
   final String meetingId;
@@ -14,6 +15,7 @@ class TranscriptionRequest {
   final String modelPath;
   final String languageCode;
   final String? executablePath;
+  final int? chunkOffsetIntervalMs;
 }
 
 abstract interface class TranscriptionEngine {

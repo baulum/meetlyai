@@ -326,6 +326,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.0"
+  flutter_markdown:
+    dependency: "direct main"
+    description:
+      name: flutter_markdown
+      sha256: "08fb8315236099ff8e90cb87bb2b935e0a724a3af1623000a9cec930468e0f27"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.7+1"
   flutter_plugin_android_lifecycle:
     dependency: transitive
     description:
@@ -1028,6 +1036,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.1"
+  syncfusion_flutter_core:
+    dependency: transitive
+    description:
+      name: syncfusion_flutter_core
+      sha256: ae6c13a42ea7012963418b8963b1e097592340eeae1c3421aa8adfc095309492
+      url: "https://pub.dev"
+    source: hosted
+    version: "33.2.7"
+  syncfusion_flutter_pdf:
+    dependency: "direct main"
+    description:
+      name: syncfusion_flutter_pdf
+      sha256: "19b50e1afde289ef34b6c7e06209b45562711840daa2e8a1243b74ed53e3bc88"
+      url: "https://pub.dev"
+    source: hosted
+    version: "33.2.7"
   term_glyph:
     dependency: transitive
     description:

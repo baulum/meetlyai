@@ -31,7 +31,7 @@ class _GlobalTodosViewState extends ConsumerState<GlobalTodosView> {
     final meetingsAsync = ref.watch(allMeetingsProvider);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(26, 0, 26, 24),
+      padding: const EdgeInsets.fromLTRB(26, 20, 26, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

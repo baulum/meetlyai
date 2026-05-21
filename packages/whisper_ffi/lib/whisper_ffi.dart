@@ -81,6 +81,10 @@ class WhisperRuntime {
       if (byteSize <= 44) {
         continue;
       }
+      if (entry.key == WhisperSource.system &&
+          await _isEffectivelySilentWav(file)) {
+        continue;
+      }
 
       final text = await _runWhisperCli(
         executable: executable,
@@ -89,6 +93,10 @@ class WhisperRuntime {
         languageCode: job.languageCode,
       );
       if (text.trim().isEmpty) {
+        continue;
+      }
+      if (entry.key == WhisperSource.system &&
+          await _isLikelySilentSystemHallucination(file, text)) {
         continue;
       }
       yield WhisperSegment(
@@ -100,6 +108,93 @@ class WhisperRuntime {
         confidence: null,
       );
     }
+  }
+
+  Future<bool> _isLikelySilentSystemHallucination(
+    File file,
+    String text,
+  ) async {
+    final normalized = text
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-zäöüß ]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final commonSilenceHallucinations = {
+      'thank you',
+      'thanks',
+      'thanks for watching',
+      'thank you for watching',
+      'bye',
+      'goodbye',
+      'the end',
+      'vielen dank',
+      'danke',
+    };
+    if (!commonSilenceHallucinations.contains(normalized)) {
+      return false;
+    }
+    return _isEffectivelySilentWav(file, relaxed: true);
+  }
+
+  Future<bool> _isEffectivelySilentWav(
+    File file, {
+    bool relaxed = false,
+  }) async {
+    final bytes = await file.readAsBytes();
+    final dataOffset = _wavDataOffset(bytes);
+    if (dataOffset == null || bytes.length <= dataOffset + 2) {
+      return true;
+    }
+
+    var peak = 0;
+    var sumSquares = 0.0;
+    var samples = 0;
+    for (var i = dataOffset; i + 1 < bytes.length; i += 2) {
+      var sample = bytes[i] | (bytes[i + 1] << 8);
+      if (sample >= 0x8000) {
+        sample -= 0x10000;
+      }
+      final absolute = sample.abs();
+      if (absolute > peak) {
+        peak = absolute;
+      }
+      final normalized = sample / 32768.0;
+      sumSquares += normalized * normalized;
+      samples++;
+    }
+    if (samples == 0) {
+      return true;
+    }
+
+    final rms = (sumSquares / samples);
+    final peakLevel = peak / 32768.0;
+    final rmsThreshold = relaxed ? 0.00012 : 0.00035;
+    final peakThreshold = relaxed ? 0.0025 : 0.006;
+    return rms < rmsThreshold * rmsThreshold && peakLevel < peakThreshold;
+  }
+
+  int? _wavDataOffset(List<int> bytes) {
+    if (bytes.length < 44 ||
+        String.fromCharCodes(bytes.take(4)) != 'RIFF' ||
+        String.fromCharCodes(bytes.skip(8).take(4)) != 'WAVE') {
+      return null;
+    }
+
+    var offset = 12;
+    while (offset + 8 <= bytes.length) {
+      final chunkId = String.fromCharCodes(bytes.skip(offset).take(4));
+      final chunkSize =
+          bytes[offset + 4] |
+          (bytes[offset + 5] << 8) |
+          (bytes[offset + 6] << 16) |
+          (bytes[offset + 7] << 24);
+      final dataStart = offset + 8;
+      if (chunkId == 'data') {
+        return dataStart;
+      }
+      offset = dataStart + chunkSize + (chunkSize.isOdd ? 1 : 0);
+    }
+    return null;
   }
 
   Future<String?> _findWhisperExecutable(String? configuredPath) async {

@@ -46,7 +46,19 @@ class WhisperFfiTranscriptionEngine implements TranscriptionEngine {
       if (segment.text.trim().isEmpty) {
         continue;
       }
-      final offsetMs = _offsetFromChunkPath(segment.audioPath);
+      final offsetMs = _offsetFromChunkPath(
+        segment.audioPath,
+        request.chunkOffsetIntervalMs,
+      );
+
+      // Assign speaker labels: if only one source is active, use Speaker 1 for all
+      // Otherwise, use Speaker 1 for mic and Speaker 2 for system
+      final speakerLabel = switch (segment.source) {
+        WhisperSource.mic => 'Speaker 1',
+        WhisperSource.system => hasSeparateSources ? 'Speaker 2' : 'Speaker 1',
+        WhisperSource.mixed => 'Speaker 1',
+      };
+
       yield TranscriptSegment(
         id: _uuid.v7(),
         meetingId: request.meetingId,
@@ -55,11 +67,7 @@ class WhisperFfiTranscriptionEngine implements TranscriptionEngine {
           WhisperSource.system => AudioSourceKind.system,
           WhisperSource.mixed => AudioSourceKind.mixed,
         },
-        speakerLabel: switch (segment.source) {
-          WhisperSource.mic => 'Speaker 1',
-          WhisperSource.system => 'Speaker 2',
-          WhisperSource.mixed => 'Speaker 1',
-        },
+        speakerLabel: speakerLabel,
         startMs: segment.startMs + offsetMs,
         endMs: segment.endMs + offsetMs,
         text: segment.text,
@@ -68,7 +76,7 @@ class WhisperFfiTranscriptionEngine implements TranscriptionEngine {
     }
   }
 
-  int _offsetFromChunkPath(String path) {
+  int _offsetFromChunkPath(String path, int? chunkOffsetIntervalMs) {
     final match = RegExp(r'_(\d{6})\.wav$').firstMatch(path);
     if (match == null) {
       return 0;
@@ -77,6 +85,6 @@ class WhisperFfiTranscriptionEngine implements TranscriptionEngine {
     if (index == null) {
       return 0;
     }
-    return index * 25000;
+    return index * (chunkOffsetIntervalMs ?? 25000);
   }
 }

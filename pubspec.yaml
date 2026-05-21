@@ -56,6 +56,8 @@ dependencies:
     path: packages/native_audio_engine
   whisper_ffi:
     path: packages/whisper_ffi
+  syncfusion_flutter_pdf: ^33.2.7
+  flutter_markdown: ^0.7.7+1
 
 dev_dependencies:
   flutter_test:

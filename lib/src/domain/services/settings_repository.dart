@@ -1,4 +1,12 @@
 abstract interface class SettingsRepository {
+  Future<bool> isOnboardingComplete();
+
+  Future<void> saveOnboardingComplete(bool complete);
+
+  Future<bool> isGuidedTourComplete();
+
+  Future<void> saveGuidedTourComplete(bool complete);
+
   Future<String?> getGeminiApiKey();
 
   Future<void> saveGeminiApiKey(String apiKey);
@@ -24,4 +32,21 @@ abstract interface class SettingsRepository {
   Future<int> getChunkTranscriptionIntervalSeconds();
 
   Future<void> saveChunkTranscriptionIntervalSeconds(int seconds);
+
+  // LLM Provider settings
+  Future<String?> getLlmProvider(); // 'gemini' or 'openai_compatible'
+
+  Future<void> saveLlmProvider(String provider);
+
+  Future<String?> getOpenAiApiKey();
+
+  Future<void> saveOpenAiApiKey(String apiKey);
+
+  Future<String?> getOpenAiBaseUrl();
+
+  Future<void> saveOpenAiBaseUrl(String baseUrl);
+
+  Future<String?> getOpenAiModelName();
+
+  Future<void> saveOpenAiModelName(String modelName);
 }

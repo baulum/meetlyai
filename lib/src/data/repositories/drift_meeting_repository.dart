@@ -546,11 +546,19 @@ class DriftMeetingRepository implements MeetingRepository {
         _db.todoRows,
       )..where((row) => row.meetingId.equals(id))).go();
       await (_db.delete(
+        _db.studyMeetingLinkRows,
+      )..where((row) => row.meetingId.equals(id))).go();
+      await (_db.delete(
         _db.meetingRows,
       )..where((row) => row.id.equals(id))).go();
     });
 
+    final meetingDirectories = <String>{};
     for (final asset in audioAssets) {
+      final meetingDirectory = _meetingDirectoryFromAssetPath(asset.path, id);
+      if (meetingDirectory != null) {
+        meetingDirectories.add(meetingDirectory);
+      }
       try {
         final file = File(asset.path);
         if (await file.exists()) {
@@ -561,6 +569,28 @@ class DriftMeetingRepository implements MeetingRepository {
         // or cannot be removed due to OS permissions.
       }
     }
+
+    for (final path in meetingDirectories) {
+      try {
+        final directory = Directory(path);
+        if (await directory.exists()) {
+          await directory.delete(recursive: true);
+        }
+      } on FileSystemException {
+        // The database delete is authoritative. Leftover files can be cleaned
+        // manually if the OS keeps a handle open while a recording is closing.
+      }
+    }
+  }
+
+  String? _meetingDirectoryFromAssetPath(String assetPath, String meetingId) {
+    final normalized = assetPath.replaceAll('\\', '/');
+    final marker = '/meetings/$meetingId/';
+    final markerIndex = normalized.indexOf(marker);
+    if (markerIndex == -1) {
+      return null;
+    }
+    return normalized.substring(0, markerIndex + marker.length - 1);
   }
 
   Meeting _meetingFromRecord(MeetingRecord record) {
