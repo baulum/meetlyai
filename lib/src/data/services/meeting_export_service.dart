@@ -156,11 +156,11 @@ class MeetingExportService implements ExportService {
       buffer
         ..writeln('## Transcript')
         ..writeln()
-        ..writeln('| Time | Source | Text |')
-        ..writeln('| --- | --- | --- |');
+        ..writeln('| Time | Speaker | Source | Text |')
+        ..writeln('| --- | --- | --- | --- |');
       for (final segment in transcript) {
         buffer.writeln(
-          '| ${_time(segment.startMs)} | ${segment.source.name} | ${_escapeTable(segment.text)} |',
+          '| ${_time(segment.startMs)} | ${_escapeTable(_speaker(segment))} | ${segment.source.displayName} | ${_escapeTable(segment.text)} |',
         );
       }
       buffer.writeln();
@@ -506,7 +506,8 @@ class MeetingExportService implements ExportService {
               text: pw.TextSpan(
                 children: [
                   pw.TextSpan(
-                    text: '${_time(segment.startMs)}  ${segment.source.name}  ',
+                    text:
+                        '${_time(segment.startMs)}  ${_speaker(segment)} · ${segment.source.displayName}  ',
                     style: pw.TextStyle(
                       color: _muted,
                       fontSize: 8,
@@ -597,6 +598,13 @@ class MeetingExportService implements ExportService {
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
     return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
+  }
+
+  String _speaker(TranscriptSegment segment) {
+    final label = segment.speakerLabel?.trim();
+    return label == null || label.isEmpty
+        ? segment.source.defaultSpeakerLabel
+        : label;
   }
 
   String _time(int ms) {

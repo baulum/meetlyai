@@ -15,7 +15,26 @@ enum MeetingStatus {
   failed,
 }
 
-enum AudioSourceKind { mic, system, mixed }
+enum AudioSourceKind {
+  mic,
+  system,
+  mixed;
+
+  /// Speaker label assigned to fresh transcript segments of this source.
+  /// The microphone carries the local user; system audio carries everyone
+  /// on the other end of the call.
+  String get defaultSpeakerLabel => switch (this) {
+    AudioSourceKind.mic => 'Me',
+    AudioSourceKind.system => 'Others',
+    AudioSourceKind.mixed => 'Speaker',
+  };
+
+  String get displayName => switch (this) {
+    AudioSourceKind.mic => 'Microphone',
+    AudioSourceKind.system => 'System audio',
+    AudioSourceKind.mixed => 'Mixed audio',
+  };
+}
 
 enum ChatRole { user, assistant, system }
 

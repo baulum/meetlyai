@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers.dart';
+import '../../domain/models/meeting_models.dart';
+import '../../theme/app_colors.dart';
 import '../chat/meeting_chat_view.dart';
 import '../learning/learning_view.dart';
 import '../recording/recording_panel.dart';
@@ -27,6 +30,43 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
         .watch(guidedTourCompleteProvider)
         .maybeWhen(data: (complete) => !complete, orElse: () => false);
 
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyR, meta: true, shift: true):
+            _toggleRecording,
+        const SingleActivator(
+          LogicalKeyboardKey.keyR,
+          control: true,
+          shift: true,
+        ): _toggleRecording,
+      },
+      child: Focus(
+        autofocus: true,
+        child: _buildScaffold(selectedMeetingId, section, showTour),
+      ),
+    );
+  }
+
+  void _toggleRecording() {
+    final recording = ref.read(recordingControllerProvider);
+    if (recording.isBusy) {
+      return;
+    }
+    final status = recording.snapshot?.status;
+    final controller = ref.read(recordingControllerProvider.notifier);
+    ref.read(appSectionProvider.notifier).showMeetings();
+    if (status == MeetingStatus.recording || status == MeetingStatus.paused) {
+      controller.stopAndAnalyze();
+    } else {
+      controller.startNewMeeting();
+    }
+  }
+
+  Widget _buildScaffold(
+    String? selectedMeetingId,
+    AppSection section,
+    bool showTour,
+  ) {
     return Scaffold(
       body: Stack(
         children: [
@@ -286,44 +326,119 @@ class _EmptyWorkspace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 58,
-              height: 58,
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(8),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Record, transcribe, summarize, and ask.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-              child: Icon(
-                Icons.forum_outlined,
-                color: Theme.of(context).colorScheme.primary,
+              const SizedBox(height: 8),
+              Text(
+                'Hit Record above (or press $recordShortcutLabel). Speech '
+                'recognition runs locally; your AI provider is only used for '
+                'the summary and chat.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textMuted,
+                  height: 1.45,
+                ),
               ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              'Record, transcribe, summarize, and ask.',
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'MeetlyAI keeps speech recognition local, then uses your Gemini key for structured analysis and meeting chat.',
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF9AA4B2)),
-            ),
-          ],
+              const SizedBox(height: 24),
+              const Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.center,
+                children: [
+                  _HowItWorksCard(
+                    icon: Icons.mic_none_rounded,
+                    color: AppColors.mic,
+                    title: 'Your microphone',
+                    body: 'Labelled "Me" in the transcript.',
+                  ),
+                  _HowItWorksCard(
+                    icon: Icons.volume_up_outlined,
+                    color: AppColors.system,
+                    title: 'System audio',
+                    body: 'Everyone else on the call, labelled "Others".',
+                  ),
+                  _HowItWorksCard(
+                    icon: Icons.auto_awesome,
+                    color: AppColors.mixed,
+                    title: 'AI summary',
+                    body: 'Decisions, todos and a chat about the meeting.',
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _HowItWorksCard extends StatelessWidget {
+  const _HowItWorksCard({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: 180,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 17, color: color),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: theme.textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            body,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textMuted,
+              height: 1.4,
+            ),
+          ),
+        ],
       ),
     );
   }

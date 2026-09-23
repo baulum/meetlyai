@@ -1,0 +1,10 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 100,
+            "driver": "SQLite",
+            "database": "/Users/paul/Library/Containers/com.example.meetlyai/Data/Documents/meetlyai.sqlite",
+            "name": "test"
+        }
+    ]
+}

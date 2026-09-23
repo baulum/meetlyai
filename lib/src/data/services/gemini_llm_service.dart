@@ -230,16 +230,8 @@ class GeminiLlmService implements LlmService {
   String _summaryPrompt(Meeting meeting, List<TranscriptSegment> transcript) {
     final transcriptText = transcript
         .map((segment) {
-          final source = switch (segment.source) {
-            AudioSourceKind.mic => 'Mic',
-            AudioSourceKind.system => 'System',
-            AudioSourceKind.mixed => 'Mixed',
-          };
-          final speaker = segment.speakerLabel?.trim().isNotEmpty == true
-              ? segment.speakerLabel!.trim()
-              : source;
-          return '[${segment.id}] ${_time(segment.startMs)}-$speaker/$source: '
-              '${segment.text}';
+          return '[${segment.id}] ${_time(segment.startMs)} '
+              '${_speaker(segment)}: ${segment.text}';
         })
         .join('\n');
 
@@ -262,6 +254,7 @@ Ziele:
 
 Meeting: ${meeting.title}
 Sprache: ${meeting.languageCode}
+Audioquellen: "Microphone" ist der lokale Nutzer, "System audio" sind die anderen Teilnehmer (z.B. im Call). Nutze das fuer Owner und Zuordnung von Aussagen.
 
 Transkript:
 $transcriptText
@@ -275,7 +268,7 @@ $transcriptText
     final context = request.transcriptContext
         .map((segment) {
           return '[${segment.id}] ${_time(segment.startMs)} '
-              '${segment.speakerLabel ?? segment.source.name}: ${segment.text}';
+              '${_speaker(segment)}: ${segment.text}';
         })
         .join('\n');
     final history = request.messages
@@ -379,6 +372,14 @@ ${request.question}
       return trimmed.substring(start, end + 1);
     }
     throw const FormatException('Gemini did not return a JSON object.');
+  }
+
+  String _speaker(TranscriptSegment segment) {
+    final label = segment.speakerLabel?.trim();
+    final name = label == null || label.isEmpty
+        ? segment.source.defaultSpeakerLabel
+        : label;
+    return '$name (${segment.source.displayName})';
   }
 
   String _time(int ms) {

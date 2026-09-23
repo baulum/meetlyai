@@ -331,11 +331,10 @@ class DriftMeetingRepository implements MeetingRepository {
             !existing.startsWith('System')) {
           continue;
         }
-        final label = switch (_enumByName(AudioSourceKind.values, row.source)) {
-          AudioSourceKind.mic => 'Speaker 1',
-          AudioSourceKind.system => 'Speaker 2',
-          AudioSourceKind.mixed => 'Speaker 1',
-        };
+        final label = _enumByName(
+          AudioSourceKind.values,
+          row.source,
+        ).defaultSpeakerLabel;
         batch.update(
           _db.transcriptSegmentRows,
           TranscriptSegmentRowsCompanion(speakerLabel: Value(label)),

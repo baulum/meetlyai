@@ -9,9 +9,47 @@ import '../../domain/services/settings_repository.dart';
 class OnboardingSetupService {
   OnboardingSetupService(this._settings);
 
-  static const defaultModelFileName = 'ggml-base.bin';
-  static const defaultModelUrl =
-      'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin';
+  static const whisperCppRepositoryUrl =
+      'https://github.com/ggml-org/whisper.cpp.git';
+
+  static const modelOptions = [
+    WhisperModelOption(
+      id: 'large-v3-turbo',
+      name: 'Large v3 Turbo',
+      fileName: 'ggml-large-v3-turbo.bin',
+      sizeLabel: '1.62 GB',
+      description: '(Empfohlen) Sehr gute Qualität, schneller als Large v3 Standard.',
+      url:
+          'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin?download=true',
+    ),
+    WhisperModelOption(
+      id: 'small',
+      name: 'Small',
+      fileName: 'ggml-small.bin',
+      sizeLabel: '488 MB',
+      description: 'Guter Einstieg, schnell und deutlich kleiner.',
+      url:
+          'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin?download=true',
+    ),
+    WhisperModelOption(
+      id: 'medium',
+      name: 'Medium',
+      fileName: 'ggml-medium.bin',
+      sizeLabel: '1.53 GB',
+      description: 'Solider Qualitäts-/Performance-Kompromiss.',
+      url:
+          'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin?download=true',
+    ),
+    WhisperModelOption(
+      id: 'large-v3',
+      name: 'Large v3 Standard',
+      fileName: 'ggml-large-v3.bin',
+      sizeLabel: '3.1 GB',
+      description: 'Beste Qualität, benötigt am meisten Speicher und Zeit.',
+      url:
+          'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin?download=true',
+    ),
+  ];
 
   final SettingsRepository _settings;
 
@@ -35,51 +73,60 @@ class OnboardingSetupService {
       return WhisperSetupStatus(executablePath: existing);
     }
 
-    if (!Platform.isMacOS) {
+    final git = await _findExecutable('git');
+    final cmake = await _findExecutable('cmake');
+    if (git == null || cmake == null) {
       throw StateError(
-        'Automatic whisper-cli install is currently supported on macOS with Homebrew. Install whisper.cpp manually and paste the path in Settings.',
+        'Automatic whisper-cli install needs git and cmake. Install both, then run onboarding again.',
       );
     }
 
-    final brew = await _findExecutable('brew');
-    if (brew == null) {
-      throw StateError(
-        'Homebrew is required for automatic install. Install Homebrew first, then run onboarding again.',
-      );
+    final repo = await _whisperCppDirectory();
+    if (!await repo.exists()) {
+      await repo.parent.create(recursive: true);
+      await _runChecked(git, [
+        'clone',
+        whisperCppRepositoryUrl,
+        repo.path,
+      ], 'git clone whisper.cpp failed');
     }
 
-    final result = await Process.run(brew, [
-      'install',
-      'whisper-cpp',
-    ], runInShell: false);
-    if (result.exitCode != 0) {
-      throw StateError(
-        'brew install whisper-cpp failed.\nstdout: ${result.stdout}\nstderr: ${result.stderr}',
-      );
-    }
+    await _runChecked(
+      cmake,
+      ['-B', 'build', '-DCMAKE_BUILD_TYPE=Release'],
+      'cmake configure failed',
+      workingDirectory: repo.path,
+    );
+    await _runChecked(
+      cmake,
+      ['--build', 'build', '-j', '--config', 'Release'],
+      'cmake build failed',
+      workingDirectory: repo.path,
+    );
 
-    final installed = await _findWhisperExecutable();
+    final installed = await _findBuiltWhisperExecutable(repo);
     if (installed == null) {
-      throw StateError('whisper-cli was installed but could not be found.');
+      throw StateError('whisper-cli was built but could not be found.');
     }
     await _settings.saveWhisperExecutablePath(installed);
     return WhisperSetupStatus(executablePath: installed);
   }
 
-  Future<String> downloadDefaultModel({
+  Future<String> downloadModel(
+    WhisperModelOption option, {
     void Function(double progress)? onProgress,
   }) async {
     final docs = await getApplicationDocumentsDirectory();
     final modelsDir = Directory(p.join(docs.path, 'MeetlyAI', 'models'));
     await modelsDir.create(recursive: true);
-    final target = File(p.join(modelsDir.path, defaultModelFileName));
+    final target = File(p.join(modelsDir.path, option.fileName));
     if (await target.exists() && await target.length() > 50 * 1024 * 1024) {
       await _settings.saveWhisperModelPath(target.path);
       onProgress?.call(1);
       return target.path;
     }
 
-    final request = await HttpClient().getUrl(Uri.parse(defaultModelUrl));
+    final request = await HttpClient().getUrl(Uri.parse(option.url));
     final response = await request.close();
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError(
@@ -115,6 +162,11 @@ class OnboardingSetupService {
     return _settings.saveOnboardingComplete(true);
   }
 
+  Future<Directory> _whisperCppDirectory() async {
+    final docs = await getApplicationDocumentsDirectory();
+    return Directory(p.join(docs.path, 'MeetlyAI', 'tools', 'whisper.cpp'));
+  }
+
   Future<String?> _findWhisperExecutable() async {
     final configured = await _settings.getWhisperExecutablePath();
     if (configured != null &&
@@ -126,7 +178,10 @@ class OnboardingSetupService {
       'whisper-cli',
       '/opt/homebrew/bin/whisper-cli',
       '/usr/local/bin/whisper-cli',
+      '/opt/homebrew/bin/main',
+      '/usr/local/bin/main',
       '${Platform.environment['HOME'] ?? ''}/whisper.cpp/build/bin/whisper-cli',
+      '${Platform.environment['HOME'] ?? ''}/whisper.cpp/build/bin/main',
     ]) {
       final found = await _findExecutable(candidate);
       if (found != null) {
@@ -173,6 +228,60 @@ class OnboardingSetupService {
     }
     return null;
   }
+
+  Future<String?> _findBuiltWhisperExecutable(Directory repo) async {
+    final names = Platform.isWindows
+        ? const ['whisper-cli.exe', 'main.exe']
+        : const ['whisper-cli', 'main'];
+    for (final relative in [
+      for (final name in names) p.join('build', 'bin', name),
+      for (final name in names) p.join('build', 'examples', 'cli', name),
+      for (final name in names) p.join('build', name),
+    ]) {
+      final file = File(p.join(repo.path, relative));
+      if (await file.exists()) {
+        return file.path;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _runChecked(
+    String executable,
+    List<String> arguments,
+    String failureMessage, {
+    String? workingDirectory,
+  }) async {
+    final result = await Process.run(
+      executable,
+      arguments,
+      workingDirectory: workingDirectory,
+      runInShell: false,
+    );
+    if (result.exitCode != 0) {
+      throw StateError(
+        '$failureMessage.\nstdout: ${result.stdout}\nstderr: ${result.stderr}',
+      );
+    }
+  }
+}
+
+class WhisperModelOption {
+  const WhisperModelOption({
+    required this.id,
+    required this.name,
+    required this.fileName,
+    required this.sizeLabel,
+    required this.description,
+    required this.url,
+  });
+
+  final String id;
+  final String name;
+  final String fileName;
+  final String sizeLabel;
+  final String description;
+  final String url;
 }
 
 class WhisperSetupStatus {

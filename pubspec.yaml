@@ -58,6 +58,7 @@ dependencies:
     path: packages/whisper_ffi
   syncfusion_flutter_pdf: ^33.2.7
   flutter_markdown: ^0.7.7+1
+  desktop_drop: ^0.7.1
 
 dev_dependencies:
   flutter_test:

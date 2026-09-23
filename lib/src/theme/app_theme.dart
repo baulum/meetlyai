@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
+import 'app_colors.dart';
+
 class AppTheme {
   static ThemeData dark() {
-    const background = Color(0xFF0D0F12);
-    const surface = Color(0xFF15181D);
-    const surfaceHigh = Color(0xFF1D2229);
-    const accent = Color(0xFF6EE7B7);
+    const background = AppColors.background;
+    const surface = AppColors.surface;
+    const surfaceHigh = AppColors.surfaceHigh;
+    const accent = AppColors.accent;
 
     final scheme =
         ColorScheme.fromSeed(
@@ -62,6 +64,64 @@ class AppTheme {
         style: FilledButton.styleFrom(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        ),
+      ),
+      tooltipTheme: TooltipThemeData(
+        waitDuration: const Duration(milliseconds: 500),
+        textStyle: const TextStyle(fontSize: 12, color: AppColors.text),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFF232A33),
+          border: Border.all(color: AppColors.borderStrong),
+          borderRadius: BorderRadius.circular(6),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        width: 520,
+        backgroundColor: surfaceHigh,
+        contentTextStyle: const TextStyle(color: AppColors.text),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: const BorderSide(color: AppColors.borderStrong),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: AppColors.border),
+        ),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: surfaceHigh,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: const BorderSide(color: AppColors.borderStrong),
+        ),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? accent.withValues(alpha: 0.14)
+                : Colors.transparent,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? AppColors.text
+                : AppColors.textMuted,
+          ),
+          side: const WidgetStatePropertyAll(
+            BorderSide(color: AppColors.borderStrong),
+          ),
+        ),
+      ),
+      scrollbarTheme: ScrollbarThemeData(
+        thickness: const WidgetStatePropertyAll(6),
+        radius: const Radius.circular(6),
+        thumbColor: WidgetStatePropertyAll(
+          AppColors.textMuted.withValues(alpha: 0.35),
         ),
       ),
       iconButtonTheme: IconButtonThemeData(

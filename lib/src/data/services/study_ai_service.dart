@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as p;
@@ -264,9 +265,62 @@ class StudyAiService {
         headers: {'Content-Type': 'application/json'},
       ),
     );
+    final normalizedModel = model.replaceFirst('models/', '');
+    try {
+      return await _postGeminiText(
+        dio: dio,
+        model: normalizedModel,
+        apiKey: apiKey.trim(),
+        instruction: instruction,
+        task: task,
+        context: context,
+        history: history,
+        temperature: temperature,
+        maxSourceChars: maxSourceChars,
+      );
+    } on DioException catch (error) {
+      if (!_shouldRetryWithCompactContext(error)) {
+        throw StateError(_dioErrorMessage('Gemini chat failed', error));
+      }
+      try {
+        return await _postGeminiText(
+          dio: dio,
+          model: normalizedModel,
+          apiKey: apiKey.trim(),
+          instruction: instruction,
+          task: task,
+          context: context,
+          history: const [],
+          temperature: temperature,
+          maxSourceChars: math.max(2500, maxSourceChars ~/ 4),
+          compact: true,
+        );
+      } on DioException catch (retryError) {
+        throw StateError(
+          _dioErrorMessage(
+            'Gemini chat failed after retry with smaller context',
+            retryError,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<String> _postGeminiText({
+    required Dio dio,
+    required String model,
+    required String apiKey,
+    required String instruction,
+    required String task,
+    required List<StudyContextItem> context,
+    required List<StudyChatMessage> history,
+    required double temperature,
+    required int maxSourceChars,
+    bool compact = false,
+  }) async {
     final response = await dio.post<Map<String, Object?>>(
-      '/v1beta/models/${model.replaceFirst('models/', '')}:generateContent',
-      queryParameters: {'key': apiKey.trim()},
+      '/v1beta/models/$model:generateContent',
+      queryParameters: {'key': apiKey},
       data: {
         'contents': [
           {
@@ -279,6 +333,7 @@ class StudyAiService {
                   context,
                   history,
                   maxSourceChars: maxSourceChars,
+                  compact: compact,
                 ),
               },
             ],
@@ -307,33 +362,59 @@ class StudyAiService {
         model.trim().isEmpty) {
       throw StateError('OpenAI-compatible configuration is incomplete.');
     }
-    final response = await _dio.post<Map<String, Object?>>(
-      '${baseUrl.trim().replaceAll(RegExp(r'/$'), '')}/chat/completions',
-      options: Options(
-        headers: {
-          'Content-Type': 'application/json',
-          if (apiKey != null && apiKey.trim().isNotEmpty)
-            'Authorization': 'Bearer ${apiKey.trim()}',
-        },
-      ),
-      data: {
-        'model': model.trim(),
-        'messages': [
-          {
-            'role': 'user',
-            'content': _prompt(
-              instruction,
-              task,
-              context,
-              history,
-              maxSourceChars: maxSourceChars,
-            ),
-          },
-        ],
-        'temperature': temperature,
-      },
-    );
-    final choices = response.data?['choices'];
+    final url =
+        '${baseUrl.trim().replaceAll(RegExp(r'/$'), '')}/chat/completions';
+    final headers = {
+      'Content-Type': 'application/json',
+      if (apiKey != null && apiKey.trim().isNotEmpty)
+        'Authorization': 'Bearer ${apiKey.trim()}',
+    };
+    Map<String, Object?>? data;
+    try {
+      final response = await _dio.post<Map<String, Object?>>(
+        url,
+        options: Options(headers: headers),
+        data: _openAiChatPayload(
+          model: model.trim(),
+          instruction: instruction,
+          task: task,
+          context: context,
+          history: history,
+          temperature: temperature,
+          maxSourceChars: maxSourceChars,
+        ),
+      );
+      data = response.data;
+    } on DioException catch (error) {
+      if (!_shouldRetryWithCompactContext(error)) {
+        throw StateError(_dioErrorMessage('Chat completion failed', error));
+      }
+      try {
+        final response = await _dio.post<Map<String, Object?>>(
+          url,
+          options: Options(headers: headers),
+          data: _openAiChatPayload(
+            model: model.trim(),
+            instruction: instruction,
+            task: task,
+            context: context,
+            history: const [],
+            temperature: temperature,
+            maxSourceChars: math.max(2500, maxSourceChars ~/ 4),
+            compact: true,
+          ),
+        );
+        data = response.data;
+      } on DioException catch (retryError) {
+        throw StateError(
+          _dioErrorMessage(
+            'Chat completion failed after retry with smaller context',
+            retryError,
+          ),
+        );
+      }
+    }
+    final choices = data?['choices'];
     if (choices is List && choices.isNotEmpty) {
       final first = choices.first;
       if (first is Map<String, Object?>) {
@@ -346,22 +427,60 @@ class StudyAiService {
     return '';
   }
 
+  Map<String, Object?> _openAiChatPayload({
+    required String model,
+    required String instruction,
+    required String task,
+    required List<StudyContextItem> context,
+    required List<StudyChatMessage> history,
+    required double temperature,
+    required int maxSourceChars,
+    bool compact = false,
+  }) {
+    return {
+      'model': model,
+      'messages': [
+        {
+          'role': 'user',
+          'content': _prompt(
+            instruction,
+            task,
+            context,
+            history,
+            maxSourceChars: maxSourceChars,
+            compact: compact,
+          ),
+        },
+      ],
+      'temperature': temperature,
+    };
+  }
+
   String _prompt(
     String instruction,
     String task,
     List<StudyContextItem> context,
     List<StudyChatMessage> history, {
     required int maxSourceChars,
+    bool compact = false,
   }) {
-    final sources = context
+    final sourceItems = context
         .where((item) => item.content.trim().isNotEmpty)
-        .map(
-          (item) =>
-              '### Quelle: ${item.title} (${item.kind})\n${_truncate(item.content, maxSourceChars)}',
-        )
+        .toList(growable: false);
+    final sourceBudget = math.max(1200, maxSourceChars);
+    final perSourceBudget = sourceItems.isEmpty
+        ? sourceBudget
+        : math.max(500, sourceBudget ~/ sourceItems.length);
+    final sources = sourceItems
+        .map((item) {
+          final text = compact
+              ? _compactText(item.content, perSourceBudget)
+              : _truncate(item.content, perSourceBudget);
+          return '### Quelle: ${item.title} (${item.kind})\n$text';
+        })
         .join('\n\n');
     final chat = history
-        .take(12)
+        .skip(math.max(0, history.length - 8))
         .map((message) => '${message.role.name}: ${message.content}')
         .join('\n');
     return '''
@@ -387,6 +506,56 @@ $chat
 Aufgabe:
 $task
 ''';
+  }
+
+  bool _shouldRetryWithCompactContext(DioException error) {
+    final status = error.response?.statusCode;
+    return status == 429 ||
+        status == 500 ||
+        status == 502 ||
+        status == 503 ||
+        status == 504 ||
+        error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        error.type == DioExceptionType.sendTimeout;
+  }
+
+  String _dioErrorMessage(String prefix, DioException error) {
+    final status = error.response?.statusCode;
+    final body = error.response?.data;
+    final bodyText = switch (body) {
+      null => '',
+      final String value => value,
+      final Map<String, Object?> value => const JsonEncoder.withIndent(
+        '  ',
+      ).convert(value),
+      _ => body.toString(),
+    };
+    final reason = switch (status) {
+      429 =>
+        'Das KI-Limit wurde erreicht. Bitte kurz warten und erneut versuchen.',
+      500 || 502 || 503 || 504 =>
+        'Der KI-Dienst hatte gerade einen Serverfehler. Ich habe es mit kleinerem Kontext erneut versucht, aber es hat noch nicht geklappt.',
+      400 =>
+        'Die Anfrage wurde vom KI-Dienst abgelehnt. Der Kontext ist eventuell zu gross oder enthaelt ein nicht unterstuetztes Format.',
+      401 || 403 => 'Der API-Key oder die Berechtigung wurde abgelehnt.',
+      _ => error.message ?? 'Unbekannter Netzwerkfehler.',
+    };
+    return [
+      prefix,
+      reason,
+      if (status != null) 'HTTP $status',
+      if (bodyText.trim().isNotEmpty) _truncate(bodyText.trim(), 1200),
+    ].join('\n');
+  }
+
+  String _compactText(String value, int maxChars) {
+    final normalized = value
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .join('\n');
+    return _truncate(normalized, maxChars);
   }
 
   String _pdfVisionPrompt({required String localText}) {

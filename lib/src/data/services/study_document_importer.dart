@@ -62,7 +62,43 @@ class StudyDocumentImporter {
     return switch (p.extension(path).toLowerCase()) {
       '.pdf' => StudyDocumentKind.pdf,
       '.md' || '.markdown' => StudyDocumentKind.markdown,
-      '.txt' => StudyDocumentKind.text,
+      '.txt' ||
+      '.text' ||
+      '.csv' ||
+      '.tsv' ||
+      '.json' ||
+      '.jsonl' ||
+      '.yaml' ||
+      '.yml' ||
+      '.xml' ||
+      '.html' ||
+      '.htm' ||
+      '.rtf' ||
+      '.dart' ||
+      '.js' ||
+      '.ts' ||
+      '.jsx' ||
+      '.tsx' ||
+      '.py' ||
+      '.java' ||
+      '.kt' ||
+      '.swift' ||
+      '.c' ||
+      '.h' ||
+      '.cpp' ||
+      '.hpp' ||
+      '.cs' ||
+      '.go' ||
+      '.rs' ||
+      '.php' ||
+      '.rb' ||
+      '.sh' ||
+      '.zsh' ||
+      '.bash' ||
+      '.sql' ||
+      '.toml' ||
+      '.ini' ||
+      '.log' => StudyDocumentKind.text,
       _ => StudyDocumentKind.other,
     };
   }
@@ -72,8 +108,38 @@ class StudyDocumentImporter {
       StudyDocumentKind.pdf => _extractPdfText(file),
       StudyDocumentKind.markdown ||
       StudyDocumentKind.text => file.readAsString(encoding: utf8),
-      StudyDocumentKind.other => '',
+      StudyDocumentKind.other => _tryExtractPlainText(file),
     };
+  }
+
+  Future<String> _tryExtractPlainText(File file) async {
+    final length = await file.length();
+    if (length == 0) {
+      return '';
+    }
+    if (length > 8 * 1024 * 1024) {
+      return 'Datei wurde gespeichert, ist aber zu groß für lokale Textvorschau. Nutze ein textbasiertes Format oder füge später eine passende Analyse-Pipeline hinzu.';
+    }
+    final bytes = await file.readAsBytes();
+    final zeroBytes = bytes.where((byte) => byte == 0).length;
+    if (zeroBytes > bytes.length * 0.01) {
+      return 'Datei wurde gespeichert. Für diesen Dateityp ist aktuell keine lokale Textextraktion verfügbar.';
+    }
+    try {
+      final text = utf8.decode(bytes, allowMalformed: false).trim();
+      if (text.isEmpty) {
+        return '';
+      }
+      final printable = text.runes.where((rune) {
+        return rune == 9 || rune == 10 || rune == 13 || rune >= 32;
+      }).length;
+      if (printable < text.runes.length * 0.85) {
+        return 'Datei wurde gespeichert. Für diesen Dateityp ist aktuell keine lokale Textextraktion verfügbar.';
+      }
+      return text;
+    } on FormatException {
+      return 'Datei wurde gespeichert. Für diesen Dateityp ist aktuell keine lokale Textextraktion verfügbar.';
+    }
   }
 
   Future<String> _extractPdfText(File file) async {

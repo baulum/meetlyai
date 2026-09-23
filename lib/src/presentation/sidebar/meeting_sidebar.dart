@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers.dart';
 import '../../domain/models/meeting_models.dart';
+import '../../theme/app_colors.dart';
 import '../../utils/formatters.dart';
 import '../widgets/status_badge.dart';
 
@@ -15,13 +16,17 @@ class MeetingSidebar extends ConsumerWidget {
     final selectedId = ref.watch(selectedMeetingIdProvider);
     final section = ref.watch(appSectionProvider);
     final collapsed = ref.watch(sidebarCollapsedProvider);
+    final recording = ref.watch(recordingControllerProvider);
+    final recordingStatus = recording.snapshot?.status;
+    final isPaused = recordingStatus == MeetingStatus.paused;
+    final isRecording = recordingStatus == MeetingStatus.recording || isPaused;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
       width: collapsed ? 76 : 306,
       decoration: const BoxDecoration(
-        color: Color(0xFF101318),
+        color: AppColors.sidebar,
         border: Border(right: BorderSide(color: Color(0xFF252B33))),
       ),
       child: LayoutBuilder(
@@ -42,18 +47,16 @@ class MeetingSidebar extends ConsumerWidget {
                     children: [
                       _NavItem(
                         collapsed: effectiveCollapsed,
-                        selected: section == AppSection.learning,
-                        icon: Icons.school_outlined,
-                        label: 'Lernen',
-                        onTap: () => ref
-                            .read(appSectionProvider.notifier)
-                            .showLearning(),
-                      ),
-                      _NavItem(
-                        collapsed: effectiveCollapsed,
                         selected: section == AppSection.meetings,
                         icon: Icons.forum_outlined,
                         label: 'Meetings',
+                        trailing: isRecording
+                            ? _RecordingIndicator(
+                                collapsed: effectiveCollapsed,
+                                paused: isPaused,
+                                elapsed: recording.snapshot!.elapsed,
+                              )
+                            : null,
                         onTap: () => ref
                             .read(appSectionProvider.notifier)
                             .showMeetings(),
@@ -65,6 +68,15 @@ class MeetingSidebar extends ConsumerWidget {
                         label: 'Todos',
                         onTap: () =>
                             ref.read(appSectionProvider.notifier).showTodos(),
+                      ),
+                      _NavItem(
+                        collapsed: effectiveCollapsed,
+                        selected: section == AppSection.learning,
+                        icon: Icons.school_outlined,
+                        label: 'Lernen',
+                        onTap: () => ref
+                            .read(appSectionProvider.notifier)
+                            .showLearning(),
                       ),
                       _NavItem(
                         collapsed: effectiveCollapsed,
@@ -81,12 +93,19 @@ class MeetingSidebar extends ConsumerWidget {
                 if (!effectiveCollapsed && section == AppSection.meetings) ...[
                   Padding(
                     padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-                    child: FilledButton.icon(
-                      onPressed: () => ref
-                          .read(recordingControllerProvider.notifier)
-                          .startNewMeeting(),
-                      icon: const Icon(Icons.add),
-                      label: const Text('New session'),
+                    child: Tooltip(
+                      message: isRecording
+                          ? 'Stop the current recording first'
+                          : 'Start recording a new meeting',
+                      child: FilledButton.icon(
+                        onPressed: isRecording || recording.isBusy
+                            ? null
+                            : () => ref
+                                  .read(recordingControllerProvider.notifier)
+                                  .startNewMeeting(),
+                        icon: const Icon(Icons.add),
+                        label: const Text('New session'),
+                      ),
                     ),
                   ),
                   Padding(
@@ -309,6 +328,7 @@ class _NavItem extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.trailing,
   });
 
   final bool collapsed;
@@ -316,6 +336,7 @@ class _NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -348,7 +369,16 @@ class _NavItem extends StatelessWidget {
                   ? MainAxisAlignment.center
                   : MainAxisAlignment.start,
               children: [
-                Icon(icon, size: 20),
+                if (collapsed && trailing != null)
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Icon(icon, size: 20),
+                      Positioned(right: -4, top: -4, child: trailing!),
+                    ],
+                  )
+                else
+                  Icon(icon, size: 20),
                 if (!collapsed) ...[
                   const SizedBox(width: 10),
                   Expanded(
@@ -361,6 +391,7 @@ class _NavItem extends StatelessWidget {
                       ),
                     ),
                   ),
+                  ?trailing,
                 ],
               ],
             ),
@@ -371,7 +402,7 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-class _MeetingTile extends StatelessWidget {
+class _MeetingTile extends StatefulWidget {
   const _MeetingTile({
     required this.meeting,
     required this.selected,
@@ -391,127 +422,245 @@ class _MeetingTile extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
+  State<_MeetingTile> createState() => _MeetingTileState();
+}
+
+class _MeetingTileState extends State<_MeetingTile> {
+  bool _hovered = false;
+  bool _menuOpen = false;
+
+  @override
   Widget build(BuildContext context) {
-    final color = selected
-        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12)
+    final meeting = widget.meeting;
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+    final showActions = _hovered || _menuOpen || widget.selected;
+    final color = widget.selected
+        ? primary.withValues(alpha: 0.12)
+        : _hovered
+        ? AppColors.surfaceHigh.withValues(alpha: 0.6)
         : Colors.transparent;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: selected
-                  ? Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.24)
-                  : Colors.transparent,
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            padding: const EdgeInsets.fromLTRB(12, 8, 6, 10),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: widget.selected
+                    ? primary.withValues(alpha: 0.24)
+                    : Colors.transparent,
+              ),
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      meeting.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: meeting.isPinned ? 'Unpin' : 'Pin',
-                    onPressed: onPin,
-                    icon: Icon(
-                      meeting.isPinned
-                          ? Icons.push_pin
-                          : Icons.push_pin_outlined,
-                      size: 18,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: meeting.isFavorite ? 'Unfavorite' : 'Favorite',
-                    onPressed: onFavorite,
-                    icon: Icon(
-                      meeting.isFavorite ? Icons.star : Icons.star_border,
-                      size: 18,
-                    ),
-                  ),
-                  PopupMenuButton<_MeetingAction>(
-                    tooltip: 'More',
-                    icon: const Icon(Icons.more_horiz, size: 18),
-                    onSelected: (action) {
-                      switch (action) {
-                        case _MeetingAction.rename:
-                          onRename();
-                        case _MeetingAction.delete:
-                          onDelete();
-                      }
-                    },
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(
-                        value: _MeetingAction.rename,
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit, size: 18),
-                            SizedBox(width: 10),
-                            Text('Rename'),
-                          ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: 32,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          meeting.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
-                      PopupMenuItem(
-                        value: _MeetingAction.delete,
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline, size: 18),
-                            SizedBox(width: 10),
-                            Text('Delete'),
+                      if (showActions) ...[
+                        _TileAction(
+                          tooltip: meeting.isPinned ? 'Unpin' : 'Pin',
+                          icon: meeting.isPinned
+                              ? Icons.push_pin
+                              : Icons.push_pin_outlined,
+                          onPressed: widget.onPin,
+                        ),
+                        _TileAction(
+                          tooltip: meeting.isFavorite
+                              ? 'Unfavorite'
+                              : 'Favorite',
+                          icon: meeting.isFavorite
+                              ? Icons.star
+                              : Icons.star_border,
+                          onPressed: widget.onFavorite,
+                        ),
+                        PopupMenuButton<_MeetingAction>(
+                          tooltip: 'More',
+                          iconSize: 17,
+                          padding: EdgeInsets.zero,
+                          icon: const Icon(Icons.more_horiz),
+                          onOpened: () => setState(() => _menuOpen = true),
+                          onCanceled: () => setState(() => _menuOpen = false),
+                          onSelected: (action) {
+                            setState(() => _menuOpen = false);
+                            switch (action) {
+                              case _MeetingAction.rename:
+                                widget.onRename();
+                              case _MeetingAction.delete:
+                                widget.onDelete();
+                            }
+                          },
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: _MeetingAction.rename,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.edit, size: 18),
+                                  SizedBox(width: 10),
+                                  Text('Rename'),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: _MeetingAction.delete,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.delete_outline, size: 18),
+                                  SizedBox(width: 10),
+                                  Text('Delete'),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
-                      ),
+                      ] else ...[
+                        if (meeting.isPinned)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 6, right: 4),
+                            child: Icon(
+                              Icons.push_pin,
+                              size: 14,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        if (meeting.isFavorite)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 4, right: 6),
+                            child: Icon(
+                              Icons.star,
+                              size: 14,
+                              color: AppColors.paused,
+                            ),
+                          ),
+                      ],
                     ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Expanded(
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          meeting.durationMs > 0
+                              ? '${compactDate(meeting.createdAt)} · '
+                                    '${durationLabel(Duration(milliseconds: meeting.durationMs))}'
+                              : compactDate(meeting.createdAt),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                      if (meeting.status != MeetingStatus.ready)
+                        StatusBadge(status: meeting.status),
+                    ],
+                  ),
+                ),
+                if (meeting.summaryPreview != null) ...[
+                  const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
                     child: Text(
-                      compactDate(meeting.createdAt),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFF9AA4B2),
+                      meeting.summaryPreview!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSubtle,
                       ),
                     ),
                   ),
-                  StatusBadge(status: meeting.status),
                 ],
-              ),
-              if (meeting.summaryPreview != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  meeting.summaryPreview!,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFFB8C0CC),
-                  ),
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _TileAction extends StatelessWidget {
+  const _TileAction({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      iconSize: 17,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+      icon: Icon(icon),
+    );
+  }
+}
+
+class _RecordingIndicator extends StatelessWidget {
+  const _RecordingIndicator({
+    required this.collapsed,
+    required this.paused,
+    required this.elapsed,
+  });
+
+  final bool collapsed;
+  final bool paused;
+  final Duration elapsed;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = paused ? AppColors.paused : AppColors.recording;
+    final dot = Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+    if (collapsed) {
+      return dot;
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        dot,
+        const SizedBox(width: 6),
+        Text(
+          durationLabel(elapsed),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w700,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
     );
   }
 }

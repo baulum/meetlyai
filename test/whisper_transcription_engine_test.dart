@@ -43,6 +43,57 @@ void main() {
     expect(segments.single.startMs, 21200);
     expect(segments.single.endMs, 22400);
   });
+
+  test('labels microphone and system audio as different speakers', () async {
+    final engine = WhisperFfiTranscriptionEngine(
+      runtime: _FakeWhisperRuntime([
+        const WhisperSegment(
+          source: WhisperSource.mic,
+          audioPath: '/tmp/mic.wav',
+          startMs: 0,
+          endMs: 1000,
+          text: 'Can everyone hear me?',
+        ),
+        const WhisperSegment(
+          source: WhisperSource.system,
+          audioPath: '/tmp/system.wav',
+          startMs: 1200,
+          endMs: 2000,
+          text: 'Yes, loud and clear.',
+        ),
+      ]),
+    );
+
+    final segments = await engine
+        .transcribe(
+          TranscriptionRequest(
+            meetingId: 'meeting-1',
+            audioAssets: [
+              for (final source in [
+                AudioSourceKind.mic,
+                AudioSourceKind.system,
+              ])
+                AudioAsset(
+                  id: 'asset-${source.name}',
+                  meetingId: 'meeting-1',
+                  source: source,
+                  path: '/tmp/${source.name}.wav',
+                  sampleRate: 16000,
+                  channels: 1,
+                  createdAt: DateTime(2026),
+                ),
+            ],
+            modelPath: '/tmp/model.bin',
+          ),
+        )
+        .toList();
+
+    expect(segments.map((segment) => segment.source), [
+      AudioSourceKind.mic,
+      AudioSourceKind.system,
+    ]);
+    expect(segments.map((segment) => segment.speakerLabel), ['Me', 'Others']);
+  });
 }
 
 class _FakeWhisperRuntime extends WhisperRuntime {

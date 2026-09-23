@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -181,6 +182,8 @@ class _LearningViewState extends ConsumerState<LearningView> {
                       selectedFolderId,
                       _studyNotesByFolder[selectedFolderId],
                     ),
+                    onDropFiles: (paths) =>
+                        _importFiles(selectedFolderId, sourcePaths: paths),
                   ),
           ),
         ],
@@ -314,14 +317,19 @@ class _LearningViewState extends ConsumerState<LearningView> {
     }
   }
 
-  Future<void> _importFiles(String folderId) async {
-    final result = await FilePicker.pickFiles(
-      allowMultiple: true,
-      type: FileType.custom,
-      allowedExtensions: const ['pdf', 'md', 'markdown', 'txt'],
+  Future<void> _importFiles(
+    String folderId, {
+    List<String>? sourcePaths,
+  }) async {
+    final paths = await _expandImportPaths(
+      sourcePaths ?? await _pickStudyFiles(),
     );
-    final files = result?.files.where((file) => file.path != null).toList();
-    if (files == null || files.isEmpty) {
+    if (paths.isEmpty) {
+      return;
+    }
+
+    final pdfVisionPaths = await _selectPdfVisionFiles(paths);
+    if (pdfVisionPaths == null) {
       return;
     }
 
@@ -329,14 +337,15 @@ class _LearningViewState extends ConsumerState<LearningView> {
     try {
       final importer = ref.read(studyDocumentImporterProvider);
       final repository = ref.read(studyRepositoryProvider);
-      for (final file in files) {
+      for (final path in paths) {
         final document = await importer.importFile(
           folderId: folderId,
-          sourcePath: file.path!,
-          category: _categoryForName(file.name),
+          sourcePath: path,
+          category: _categoryForName(p.basename(path)),
         );
         await repository.upsertDocument(
-          document.kind == StudyDocumentKind.pdf
+          document.kind == StudyDocumentKind.pdf &&
+                  pdfVisionPaths.contains(path)
               ? await _documentWithPdfVision(document)
               : document,
         );
@@ -346,6 +355,109 @@ class _LearningViewState extends ConsumerState<LearningView> {
         setState(() => _busy = false);
       }
     }
+  }
+
+  Future<List<String>> _pickStudyFiles() async {
+    final result = await FilePicker.pickFiles(
+      allowMultiple: true,
+      type: FileType.any,
+    );
+    return result?.files
+            .map((file) => file.path)
+            .nonNulls
+            .toList(growable: false) ??
+        const <String>[];
+  }
+
+  Future<List<String>> _expandImportPaths(List<String> paths) async {
+    final files = <String>[];
+    for (final path in paths) {
+      final type = await FileSystemEntity.type(path);
+      if (type == FileSystemEntityType.file) {
+        files.add(path);
+      } else if (type == FileSystemEntityType.directory) {
+        final directory = Directory(path);
+        await for (final entity in directory.list(recursive: true)) {
+          if (entity is File) {
+            files.add(entity.path);
+          }
+        }
+      }
+    }
+    return files;
+  }
+
+  Future<Set<String>?> _selectPdfVisionFiles(List<String> paths) async {
+    final pdfPaths = paths
+        .where((path) => p.extension(path).toLowerCase() == '.pdf')
+        .toList(growable: false);
+    if (pdfPaths.isEmpty || !mounted) {
+      return <String>{};
+    }
+
+    final selected = <String>{};
+    return showDialog<Set<String>>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('PDF-Vision aktivieren?'),
+          content: SizedBox(
+            width: 560,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Wähle nur die PDFs aus, bei denen Bilder, Diagramme, Tabellen oder Handschrift per Gemini Vision analysiert werden sollen. Reine Text-PDFs können lokal bleiben.',
+                ),
+                const SizedBox(height: 14),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      for (final path in pdfPaths)
+                        CheckboxListTile(
+                          value: selected.contains(path),
+                          onChanged: (value) => setDialogState(() {
+                            if (value == true) {
+                              selected.add(path);
+                            } else {
+                              selected.remove(path);
+                            }
+                          }),
+                          title: Text(p.basename(path)),
+                          subtitle: const Text(
+                            'Aus: nur lokale Textextraktion · An: zusätzliche Gemini Vision Analyse',
+                          ),
+                          controlAffinity: ListTileControlAffinity.leading,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text('Abbrechen'),
+            ),
+            TextButton(
+              onPressed: () => setDialogState(() {
+                selected
+                  ..clear()
+                  ..addAll(pdfPaths);
+              }),
+              child: const Text('Alle aktivieren'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(Set.of(selected)),
+              child: const Text('Importieren'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<StudyDocument> _documentWithPdfVision(StudyDocument document) async {
@@ -486,7 +598,7 @@ class _LearningViewState extends ConsumerState<LearningView> {
           id: const Uuid().v7(),
           folderId: folderId,
           role: StudyChatRole.assistant,
-          content: 'Could not answer: $error',
+          content: _studyChatErrorMessage(error),
           createdAt: DateTime.now(),
         ),
       );
@@ -495,6 +607,23 @@ class _LearningViewState extends ConsumerState<LearningView> {
         setState(() => _busy = false);
       }
     }
+  }
+
+  String _studyChatErrorMessage(Object error) {
+    final text = error.toString().replaceFirst('Bad state: ', '').trim();
+    return '''
+**Antwort gerade nicht möglich**
+
+- Der KI-Dienst konnte die Anfrage nicht beantworten.
+- Ich habe die Anfrage bereits mit kleinerem Kontext erneut versucht.
+- Bitte versuche es gleich nochmal oder reduziere die ausgewählten Unterlagen.
+
+**Details**
+
+```text
+$text
+```
+''';
   }
 
   Future<void> _generateStudyAsset(
@@ -582,6 +711,8 @@ class _LearningViewState extends ConsumerState<LearningView> {
     );
   }
 
+  static const _chunkSize = 10000;
+
   Future<List<StudyContextItem>> _buildContext(String folderId) async {
     final repository = ref.read(studyRepositoryProvider);
     final folderIds = await _folderAndDescendantIds(folderId);
@@ -594,15 +725,23 @@ class _LearningViewState extends ConsumerState<LearningView> {
     final items = <StudyContextItem>[];
     for (final document in documents) {
       final text = await _resolvedDocumentText(document);
-      items.add(
-        StudyContextItem(
-          title: 'Datei: ${document.title}',
-          kind: 'file/${document.kind.name}',
-          content: text.trim().isEmpty
-              ? '[Kein Text aus dieser Datei extrahiert: ${document.sourcePath}]'
-              : text,
-        ),
-      );
+      if (text.trim().isEmpty) {
+        items.add(
+          StudyContextItem(
+            title: 'Datei: ${document.title}',
+            kind: 'file/${document.kind.name}',
+            content:
+                '[Kein Text aus dieser Datei extrahiert: ${document.sourcePath}]',
+          ),
+        );
+      } else {
+        final chunks = _chunkText(
+          text,
+          'Datei: ${document.title}',
+          'file/${document.kind.name}',
+        );
+        items.addAll(chunks);
+      }
     }
     for (final link in links) {
       final meeting = await ref
@@ -611,20 +750,82 @@ class _LearningViewState extends ConsumerState<LearningView> {
       final transcript = await ref
           .read(meetingRepositoryProvider)
           .getTranscript(link.meetingId);
-      items.add(
-        StudyContextItem(
-          title: meeting?.title ?? 'Meeting',
-          kind: 'meeting',
-          content: transcript
-              .map(
-                (segment) =>
-                    '${segment.speakerLabel ?? segment.source.name}: ${segment.text}',
-              )
-              .join('\n'),
-        ),
+      final content = transcript
+          .map(
+            (segment) =>
+                '${segment.speakerLabel ?? segment.source.name}: ${segment.text}',
+          )
+          .join('\n');
+      final chunks = _chunkText(
+        content,
+        meeting?.title ?? 'Meeting',
+        'meeting',
       );
+      items.addAll(chunks);
     }
     return items;
+  }
+
+  List<StudyContextItem> _chunkText(String text, String title, String kind) {
+    if (text.length <= _chunkSize) {
+      return [StudyContextItem(title: title, kind: kind, content: text)];
+    }
+    final paragraphs = text.split('\n\n');
+    final chunks = <String>[];
+    var current = StringBuffer();
+    for (final paragraph in paragraphs) {
+      if (current.length + paragraph.length > _chunkSize &&
+          current.isNotEmpty) {
+        chunks.add(current.toString().trim());
+        current = StringBuffer();
+      }
+      if (paragraph.length > _chunkSize) {
+        if (current.isNotEmpty) {
+          chunks.add(current.toString().trim());
+          current = StringBuffer();
+        }
+        for (final sentence in _splitSentences(paragraph)) {
+          if (current.length + sentence.length > _chunkSize &&
+              current.isNotEmpty) {
+            chunks.add(current.toString().trim());
+            current = StringBuffer();
+          }
+          current.write(sentence);
+        }
+      } else {
+        if (current.isNotEmpty) current.write('\n\n');
+        current.write(paragraph);
+      }
+    }
+    if (current.isNotEmpty) {
+      chunks.add(current.toString().trim());
+    }
+    return chunks.asMap().entries.map((entry) {
+      final index = entry.key;
+      final chunk = entry.value;
+      final total = chunks.length;
+      final suffix = total == 1 ? '' : ' (${index + 1}/$total)';
+      return StudyContextItem(
+        title: '$title$suffix',
+        kind: kind,
+        content: chunk,
+      );
+    }).toList();
+  }
+
+  List<String> _splitSentences(String text) {
+    final result = <String>[];
+    final buffer = StringBuffer();
+    for (var i = 0; i < text.length; i++) {
+      buffer.write(text[i]);
+      if ((text[i] == '.' || text[i] == '!' || text[i] == '?') &&
+          (i + 1 >= text.length || text[i + 1] == ' ')) {
+        result.add(buffer.toString());
+        buffer.clear();
+      }
+    }
+    if (buffer.isNotEmpty) result.add(buffer.toString());
+    return result;
   }
 
   Future<String> _resolvedDocumentText(StudyDocument document) async {
@@ -634,14 +835,7 @@ class _LearningViewState extends ConsumerState<LearningView> {
     final extractedText = await ref
         .read(studyDocumentImporterProvider)
         .extractTextFromPath(document.sourcePath);
-    final mergedText = document.kind == StudyDocumentKind.pdf
-        ? await _pdfTextWithVision(
-            sourcePath: document.sourcePath,
-            localText: extractedText.trim().isEmpty
-                ? document.extractedText
-                : extractedText,
-          )
-        : extractedText;
+    final mergedText = extractedText;
     if (mergedText.trim().isEmpty ||
         mergedText.trim() == document.extractedText.trim()) {
       return document.extractedText;
@@ -665,11 +859,7 @@ class _LearningViewState extends ConsumerState<LearningView> {
 
   bool _shouldRefreshExtractedText(StudyDocument document) {
     final text = document.extractedText.trim();
-    return document.kind == StudyDocumentKind.pdf &&
-        (text.isEmpty ||
-            text.startsWith('PDF text extraction requires') ||
-            text.startsWith('PDF konnte importiert werden') ||
-            !text.contains(StudyAiService.pdfVisionHeading));
+    return text.isEmpty;
   }
 
   Future<List<String>> _folderAndDescendantIds(String folderId) async {
@@ -937,6 +1127,7 @@ class _LearningWorkspace extends ConsumerWidget {
     required this.onQuiz,
     required this.onStudyNote,
     required this.onExportStudyNote,
+    required this.onDropFiles,
   });
 
   final String folderId;
@@ -967,6 +1158,7 @@ class _LearningWorkspace extends ConsumerWidget {
   final VoidCallback onQuiz;
   final VoidCallback onStudyNote;
   final VoidCallback onExportStudyNote;
+  final ValueChanged<List<String>> onDropFiles;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -995,6 +1187,7 @@ class _LearningWorkspace extends ConsumerWidget {
                 busy: busy,
                 onImport: onImport,
                 onLinkMeeting: onLinkMeeting,
+                onDropFiles: onDropFiles,
               ),
               _LearningTab.notes => _StudyNotePanel(
                 key: const ValueKey('notes'),
@@ -1113,6 +1306,92 @@ class _LearningTabs extends StatelessWidget {
   }
 }
 
+class _DropImportSurface extends StatefulWidget {
+  const _DropImportSurface({
+    required this.enabled,
+    required this.onDropFiles,
+    required this.child,
+  });
+
+  final bool enabled;
+  final ValueChanged<List<String>> onDropFiles;
+  final Widget child;
+
+  @override
+  State<_DropImportSurface> createState() => _DropImportSurfaceState();
+}
+
+class _DropImportSurfaceState extends State<_DropImportSurface> {
+  bool _dragging = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropTarget(
+      enable: widget.enabled,
+      onDragEntered: (_) => setState(() => _dragging = true),
+      onDragExited: (_) => setState(() => _dragging = false),
+      onDragDone: (detail) {
+        setState(() => _dragging = false);
+        final paths = detail.files
+            .map((file) => file.path)
+            .where((path) => path.isNotEmpty)
+            .toList(growable: false);
+        if (paths.isNotEmpty) {
+          widget.onDropFiles(paths);
+        }
+      },
+      child: Stack(
+        children: [
+          Positioned.fill(child: widget.child),
+          IgnorePointer(
+            ignoring: !_dragging,
+            child: AnimatedOpacity(
+              opacity: _dragging ? 1 : 0,
+              duration: const Duration(milliseconds: 140),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.10),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 1.5,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xE610141A),
+                      border: Border.all(color: const Color(0xFF2B333D)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.file_upload_outlined,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 10),
+                        const Text('Dateien in diesen Ordner importieren'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _EvidencePanel extends ConsumerWidget {
   const _EvidencePanel({
     required this.documents,
@@ -1121,6 +1400,7 @@ class _EvidencePanel extends ConsumerWidget {
     required this.busy,
     required this.onImport,
     required this.onLinkMeeting,
+    required this.onDropFiles,
   });
 
   final AsyncValue<List<StudyDocument>> documents;
@@ -1129,6 +1409,7 @@ class _EvidencePanel extends ConsumerWidget {
   final bool busy;
   final VoidCallback onImport;
   final VoidCallback onLinkMeeting;
+  final ValueChanged<List<String>> onDropFiles;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1136,101 +1417,196 @@ class _EvidencePanel extends ConsumerWidget {
     final meetingTitles = {
       for (final meeting in meetings) meeting.id: meeting.title,
     };
-    return _Panel(
-      title: 'Evidence',
-      trailing: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          FilledButton.tonalIcon(
-            onPressed: busy ? null : onImport,
-            icon: const Icon(Icons.upload_file, size: 18),
-            label: const Text('Upload'),
-          ),
-          FilledButton.icon(
-            onPressed: busy ? null : onLinkMeeting,
-            icon: const Icon(Icons.forum_outlined, size: 18),
-            label: const Text('Meeting'),
-          ),
-        ],
-      ),
-      child: ListView(
-        children: [
-          Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF10141A),
-              border: Border.all(color: const Color(0xFF252D37)),
-              borderRadius: BorderRadius.circular(8),
+    return _DropImportSurface(
+      enabled: !busy,
+      onDropFiles: onDropFiles,
+      child: _Panel(
+        title: 'Evidence',
+        trailing: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            FilledButton.tonalIcon(
+              onPressed: busy ? null : onImport,
+              icon: const Icon(Icons.upload_file, size: 18),
+              label: const Text('Upload'),
             ),
-            child: const Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.privacy_tip_outlined, size: 18),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'PDF-Vision sendet PDF-Inhalte an Gemini, damit Bilder, Diagramme, Tabellen und Handschrift analysiert werden können. Meeting-Transkription bleibt lokal.',
+            FilledButton.icon(
+              onPressed: busy ? null : onLinkMeeting,
+              icon: const Icon(Icons.forum_outlined, size: 18),
+              label: const Text('Meeting'),
+            ),
+          ],
+        ),
+        child: ListView(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10141A),
+                border: Border.all(color: const Color(0xFF252D37)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.privacy_tip_outlined, size: 18),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Du kannst Dateien hier hineinziehen. PDF-Vision ist pro PDF optional und sendet nur ausgewählte PDF-Inhalte an Gemini. Meeting-Transkription bleibt lokal.',
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          documents.when(
-            data: (items) => Column(
-              children: [
-                for (final item in items)
-                  _EvidenceTile(
-                    icon: item.kind == StudyDocumentKind.pdf
-                        ? Icons.picture_as_pdf_outlined
-                        : Icons.description_outlined,
-                    title: item.title,
-                    subtitle: _documentSubtitle(item),
-                    menuItems: [
-                      PopupMenuItem(
-                        onTap: () => _editDocument(context, ref, item),
-                        child: const Text('Edit category / folder'),
-                      ),
-                      PopupMenuItem(
-                        onTap: () => ref
-                            .read(studyRepositoryProvider)
-                            .deleteDocument(item.id),
-                        child: const Text('Delete'),
-                      ),
-                    ],
-                  ),
-              ],
+            documents.when(
+              data: (items) => Column(
+                children: [
+                  for (final item in items)
+                    _EvidenceTile(
+                      icon: _documentIcon(item.kind),
+                      title: item.title,
+                      subtitle: _documentSubtitle(item),
+                      menuItems: [
+                        if (item.kind == StudyDocumentKind.pdf)
+                          PopupMenuItem(
+                            onTap: () {
+                              final messenger = ScaffoldMessenger.of(context);
+                              Future<void>.delayed(
+                                Duration.zero,
+                                () => _analyzePdfVision(messenger, ref, item),
+                              );
+                            },
+                            child: const Text('PDF-Vision analysieren'),
+                          ),
+                        PopupMenuItem(
+                          onTap: () => _editDocument(context, ref, item),
+                          child: const Text('Edit category / folder'),
+                        ),
+                        PopupMenuItem(
+                          onTap: () => ref
+                              .read(studyRepositoryProvider)
+                              .deleteDocument(item.id),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+              error: (error, _) => Text('$error'),
+              loading: () => const LinearProgressIndicator(),
             ),
-            error: (error, _) => Text('$error'),
-            loading: () => const LinearProgressIndicator(),
-          ),
-          const SizedBox(height: 10),
-          links.when(
-            data: (items) => Column(
-              children: [
-                for (final item in items)
-                  _EvidenceTile(
-                    icon: Icons.forum_outlined,
-                    title: meetingTitles[item.meetingId] ?? 'Meeting',
-                    subtitle: 'Recorded meeting',
-                    menuItems: [
-                      PopupMenuItem(
-                        onTap: () => ref
-                            .read(studyRepositoryProvider)
-                            .unlinkMeeting(item.id),
-                        child: const Text('Remove'),
-                      ),
-                    ],
-                  ),
-              ],
+            const SizedBox(height: 10),
+            links.when(
+              data: (items) => Column(
+                children: [
+                  for (final item in items)
+                    _EvidenceTile(
+                      icon: Icons.forum_outlined,
+                      title: meetingTitles[item.meetingId] ?? 'Meeting',
+                      subtitle: 'Recorded meeting',
+                      menuItems: [
+                        PopupMenuItem(
+                          onTap: () => ref
+                              .read(studyRepositoryProvider)
+                              .unlinkMeeting(item.id),
+                          child: const Text('Remove'),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+              error: (error, _) => Text('$error'),
+              loading: () => const SizedBox.shrink(),
             ),
-            error: (error, _) => Text('$error'),
-            loading: () => const SizedBox.shrink(),
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  IconData _documentIcon(StudyDocumentKind kind) {
+    return switch (kind) {
+      StudyDocumentKind.pdf => Icons.picture_as_pdf_outlined,
+      StudyDocumentKind.markdown => Icons.article_outlined,
+      StudyDocumentKind.text => Icons.subject_outlined,
+      StudyDocumentKind.other => Icons.insert_drive_file_outlined,
+    };
+  }
+
+  Future<void> _analyzePdfVision(
+    ScaffoldMessengerState messenger,
+    WidgetRef ref,
+    StudyDocument document,
+  ) async {
+    messenger.showSnackBar(
+      SnackBar(content: Text('Analysiere ${document.title} mit PDF-Vision...')),
+    );
+    try {
+      final localText = _withoutPdfVision(document.extractedText);
+      final analysis = await ref
+          .read(studyAiServiceProvider)
+          .analyzePdfVision(pdfPath: document.sourcePath, localText: localText);
+      await ref
+          .read(studyRepositoryProvider)
+          .upsertDocument(
+            StudyDocument(
+              id: document.id,
+              folderId: document.folderId,
+              title: document.title,
+              kind: document.kind,
+              sourcePath: document.sourcePath,
+              category: document.category,
+              extractedText: _mergePdfTextAndVision(localText, analysis),
+              createdAt: document.createdAt,
+            ),
+          );
+      messenger.showSnackBar(
+        SnackBar(content: Text('PDF-Vision abgeschlossen: ${document.title}')),
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('PDF-Vision fehlgeschlagen: $error')),
+      );
+    }
+  }
+
+  String _mergePdfTextAndVision(String localText, String visualAnalysis) {
+    final parts = <String>[];
+    final cleanedLocal = _withoutPdfVision(localText).trim();
+    if (cleanedLocal.isNotEmpty) {
+      parts
+        ..add('## Lokal extrahierter PDF-Text')
+        ..add(cleanedLocal);
+    }
+    final cleanedVision = visualAnalysis.trim();
+    if (cleanedVision.isNotEmpty) {
+      if (cleanedVision.startsWith(StudyAiService.pdfVisionHeading)) {
+        parts.add(cleanedVision);
+      } else {
+        parts
+          ..add(StudyAiService.pdfVisionHeading)
+          ..add(cleanedVision);
+      }
+    }
+    return parts.join('\n\n').trim();
+  }
+
+  String _withoutPdfVision(String value) {
+    final markers = [
+      StudyAiService.pdfVisionHeading,
+      StudyAiService.pdfVisionFailureHeading,
+    ];
+    var end = value.length;
+    for (final marker in markers) {
+      final index = value.indexOf(marker);
+      if (index >= 0 && index < end) {
+        end = index;
+      }
+    }
+    return value.substring(0, end);
   }
 
   String _documentSubtitle(StudyDocument item) {

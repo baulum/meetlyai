@@ -51,23 +51,17 @@ class WhisperFfiTranscriptionEngine implements TranscriptionEngine {
         request.chunkOffsetIntervalMs,
       );
 
-      // Assign speaker labels: if only one source is active, use Speaker 1 for all
-      // Otherwise, use Speaker 1 for mic and Speaker 2 for system
-      final speakerLabel = switch (segment.source) {
-        WhisperSource.mic => 'Speaker 1',
-        WhisperSource.system => hasSeparateSources ? 'Speaker 2' : 'Speaker 1',
-        WhisperSource.mixed => 'Speaker 1',
+      final source = switch (segment.source) {
+        WhisperSource.mic => AudioSourceKind.mic,
+        WhisperSource.system => AudioSourceKind.system,
+        WhisperSource.mixed => AudioSourceKind.mixed,
       };
 
       yield TranscriptSegment(
         id: _uuid.v7(),
         meetingId: request.meetingId,
-        source: switch (segment.source) {
-          WhisperSource.mic => AudioSourceKind.mic,
-          WhisperSource.system => AudioSourceKind.system,
-          WhisperSource.mixed => AudioSourceKind.mixed,
-        },
-        speakerLabel: speakerLabel,
+        source: source,
+        speakerLabel: source.defaultSpeakerLabel,
         startMs: segment.startMs + offsetMs,
         endMs: segment.endMs + offsetMs,
         text: segment.text,

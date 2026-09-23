@@ -182,11 +182,10 @@ class OpenAiCompatibleLlmService implements LlmService {
   }
 
   String _summaryPrompt(Meeting meeting, List<TranscriptSegment> transcript) {
-    final transcriptText = transcript
-        .map((seg) => '${seg.speakerLabel ?? 'Unknown'}: ${seg.text}')
-        .join('\n');
+    final transcriptText = transcript.map(_transcriptLine).join('\n');
 
     return '''Analysiere diesen Meeting-Transkript und erstelle eine strukturierte Zusammenfassung.
+Jede Zeile nennt Sprecher und Audioquelle: "Microphone" ist der lokale Nutzer, "System audio" sind die anderen Teilnehmer (z.B. im Call).
 
 Transkript:
 $transcriptText
@@ -231,15 +230,13 @@ Strukturiere jede Antwort mit passenden kurzen Ueberschriften und Unterthemen.
 Nutze Bulletpoints und Markdown-Tabellen, wenn sie die Antwort klarer machen.''';
     }
 
-    final context = request.transcriptContext
-        .map((seg) => '${seg.speakerLabel ?? 'Unknown'}: ${seg.text}')
-        .join('\n');
+    final context = request.transcriptContext.map(_transcriptLine).join('\n');
 
     return '''Du bist ein Meeting-Assistent. Antworte basierend auf folgendem Kontext:
 
 Zusammenfassung: ${summary.overview}
 
-Relevant Transkript-Ausschnitte:
+Relevant Transkript-Ausschnitte ("Microphone" = lokaler Nutzer, "System audio" = andere Teilnehmer):
 $context
 
 Gib präzise, hilfreiche Antworten basierend auf dem Meeting-Inhalt.
@@ -247,6 +244,14 @@ Antworte immer als GitHub-Flavored Markdown.
 Strukturiere jede Antwort mit passenden kurzen Ueberschriften und Unterthemen, wie z.B. "Kurzantwort", "Wichtige Punkte", "Aufgaben", "Risiken" oder "Belege". Mache diese fett.
 Nutze Bulletpoints fuer scanbare Inhalte und Markdown-Tabellen fuer Vergleiche, Aufgabenlisten, Status, Owner, Termine oder strukturierte Daten.
 Keine unformatierten Fliesstext-Bloecke.''';
+  }
+
+  String _transcriptLine(TranscriptSegment segment) {
+    final speaker = segment.speakerLabel?.trim();
+    final name = speaker == null || speaker.isEmpty
+        ? segment.source.defaultSpeakerLabel
+        : speaker;
+    return '$name (${segment.source.displayName}): ${segment.text}';
   }
 
   MeetingSummary _summaryFromJson(String meetingId, String jsonText) {

@@ -26,10 +26,15 @@ class StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
-      child: Text(
-        status.name,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color),
-      ),
+      child: Text(switch (status) {
+        MeetingStatus.draft => 'Draft',
+        MeetingStatus.recording => 'Recording',
+        MeetingStatus.paused => 'Paused',
+        MeetingStatus.transcribing => 'Transcribing',
+        MeetingStatus.summarizing => 'Summarizing',
+        MeetingStatus.ready => 'Ready',
+        MeetingStatus.failed => 'Failed',
+      }, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color)),
     );
   }
 }

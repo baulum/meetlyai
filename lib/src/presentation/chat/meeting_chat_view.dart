@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../application/providers.dart';
 import '../../domain/models/meeting_models.dart';
+import '../../theme/app_colors.dart';
 import '../../utils/formatters.dart';
 import '../widgets/chat_markdown.dart';
 
@@ -1572,7 +1573,7 @@ Future<void> _editOpenQuestion(
   }
 }
 
-class _TranscriptBlock extends ConsumerWidget {
+class _TranscriptBlock extends ConsumerStatefulWidget {
   const _TranscriptBlock({
     required this.meetingId,
     required this.status,
@@ -1584,98 +1585,258 @@ class _TranscriptBlock extends ConsumerWidget {
   final List<TranscriptSegment> segments;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_TranscriptBlock> createState() => _TranscriptBlockState();
+}
+
+class _TranscriptBlockState extends ConsumerState<_TranscriptBlock> {
+  /// Null shows every source.
+  AudioSourceKind? _sourceFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    final segments = widget.segments;
+    final sources = segments.map((segment) => segment.source).toSet();
+    final filter = sources.contains(_sourceFilter) ? _sourceFilter : null;
+    final visible = filter == null
+        ? segments
+        : segments.where((segment) => segment.source == filter).toList();
+    final groups = _groupSegments(visible);
+
     return _Section(
       title: 'Transcript',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _SpeakerToolbar(
-            meetingId: meetingId,
+            meetingId: widget.meetingId,
             segments: segments,
             onRename: (oldLabel, newLabel) => ref
                 .read(recordingControllerProvider.notifier)
                 .renameSpeaker(
-                  meetingId: meetingId,
+                  meetingId: widget.meetingId,
                   oldLabel: oldLabel,
                   newLabel: newLabel,
                 ),
             onRegenerateSummary: () => ref
                 .read(recordingControllerProvider.notifier)
-                .regenerateSummary(meetingId),
+                .regenerateSummary(widget.meetingId),
           ),
+          if (sources.length > 1) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: _SourceFilter(
+                sources: sources,
+                segments: segments,
+                selected: filter,
+                onChanged: (value) => setState(() => _sourceFilter = value),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           if (segments.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF111419),
-                border: Border.all(color: const Color(0xFF252B33)),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                switch (status) {
-                  MeetingStatus.recording || MeetingStatus.paused =>
-                    'Transcript chunks will appear while the meeting is recorded.',
-                  MeetingStatus.transcribing =>
-                    'Local transcription is running.',
-                  _ => 'No transcript available yet.',
-                },
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF9AA4B2),
-                ),
-              ),
-            )
+            _TranscriptEmptyState(status: widget.status)
           else
-            for (final segment in segments)
-              Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF111419),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF2B333D)),
-                ),
-                child: Row(
+            for (final group in groups) _TranscriptGroupTile(group: group),
+        ],
+      ),
+    );
+  }
+}
+
+/// Consecutive segments from the same source and speaker, shown as one turn.
+class _TranscriptGroup {
+  _TranscriptGroup(this.first) : segments = [first];
+
+  final TranscriptSegment first;
+  final List<TranscriptSegment> segments;
+
+  bool accepts(TranscriptSegment segment) =>
+      segment.source == first.source &&
+      _speakerName(segment) == _speakerName(first) &&
+      segment.startMs - segments.last.endMs < 30000;
+}
+
+List<_TranscriptGroup> _groupSegments(List<TranscriptSegment> segments) {
+  final groups = <_TranscriptGroup>[];
+  for (final segment in segments) {
+    if (groups.isNotEmpty && groups.last.accepts(segment)) {
+      groups.last.segments.add(segment);
+    } else {
+      groups.add(_TranscriptGroup(segment));
+    }
+  }
+  return groups;
+}
+
+class _TranscriptGroupTile extends StatelessWidget {
+  const _TranscriptGroupTile({required this.group});
+
+  final _TranscriptGroup group;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = AudioSourceStyle.of(group.first.source);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: AppColors.inset,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.borderStrong),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(width: 3, color: style.color),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      width: 76,
-                      child: Text(
-                        transcriptTime(segment.startMs),
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: const Color(0xFF9AA4B2),
-                          fontFeatures: const [FontFeature.tabularFigures()],
+                    Row(
+                      children: [
+                        Icon(style.icon, size: 15, color: style.color),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            _speakerName(group.first),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: style.color,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Text(
+                          style.label,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          transcriptTime(group.first.startMs),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: AppColors.textMuted,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ],
                     ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _speakerName(segment),
-                            style: Theme.of(context).textTheme.labelMedium
-                                ?.copyWith(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            segment.text,
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: const Color(0xFFE7EAEE),
-                                  height: 1.45,
-                                ),
-                          ),
-                        ],
+                    const SizedBox(height: 6),
+                    SelectableText(
+                      group.segments
+                          .map((segment) => segment.text.trim())
+                          .join(' '),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.text,
+                        height: 1.5,
                       ),
                     ),
                   ],
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SourceFilter extends StatelessWidget {
+  const _SourceFilter({
+    required this.sources,
+    required this.segments,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final Set<AudioSourceKind> sources;
+  final List<TranscriptSegment> segments;
+  final AudioSourceKind? selected;
+  final ValueChanged<AudioSourceKind?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final ordered = AudioSourceKind.values.where(sources.contains);
+    return SegmentedButton<AudioSourceKind?>(
+      showSelectedIcon: false,
+      style: const ButtonStyle(visualDensity: VisualDensity.compact),
+      segments: [
+        ButtonSegment(
+          value: null,
+          icon: const Icon(Icons.subject, size: 16),
+          label: Text('All ${segments.length}'),
+        ),
+        for (final source in ordered)
+          ButtonSegment(
+            value: source,
+            icon: Icon(
+              AudioSourceStyle.of(source).icon,
+              size: 16,
+              color: AudioSourceStyle.of(source).color,
+            ),
+            label: Text(
+              '${AudioSourceStyle.of(source).shortLabel} '
+              '${segments.where((segment) => segment.source == source).length}',
+            ),
+          ),
+      ],
+      selected: {selected},
+      onSelectionChanged: (selection) => onChanged(selection.first),
+    );
+  }
+}
+
+class _TranscriptEmptyState extends StatelessWidget {
+  const _TranscriptEmptyState({required this.status});
+
+  final MeetingStatus? status;
+
+  @override
+  Widget build(BuildContext context) {
+    final inProgress =
+        status == MeetingStatus.recording ||
+        status == MeetingStatus.transcribing;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.inset,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          if (inProgress)
+            const SizedBox.square(
+              dimension: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            const Icon(Icons.subject, size: 18, color: AppColors.textMuted),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              switch (status) {
+                MeetingStatus.recording || MeetingStatus.paused =>
+                  'Transcript chunks appear here while you record. Your '
+                      'microphone and the system audio show up as separate '
+                      'speakers.',
+                MeetingStatus.transcribing => 'Local transcription is running…',
+                _ => 'No transcript available yet.',
+              },
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+            ),
+          ),
         ],
       ),
     );
@@ -1687,11 +1848,7 @@ String _speakerName(TranscriptSegment segment) {
   if (label != null && label.isNotEmpty) {
     return label;
   }
-  return switch (segment.source) {
-    AudioSourceKind.mic => 'Speaker 1',
-    AudioSourceKind.system => 'Speaker 2',
-    AudioSourceKind.mixed => 'Speaker 1',
-  };
+  return segment.source.defaultSpeakerLabel;
 }
 
 List<String> _referenceLabels(
@@ -1762,14 +1919,14 @@ class _SpeakerToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labels =
-        segments
-            .map((segment) => segment.speakerLabel?.trim())
-            .whereType<String>()
-            .where((label) => label.isNotEmpty)
-            .toSet()
-            .toList()
-          ..sort();
+    final sourceByLabel = <String, AudioSourceKind>{};
+    for (final segment in segments) {
+      final label = segment.speakerLabel?.trim();
+      if (label != null && label.isNotEmpty) {
+        sourceByLabel.putIfAbsent(label, () => segment.source);
+      }
+    }
+    final labels = sourceByLabel.keys.toList()..sort();
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1790,14 +1947,22 @@ class _SpeakerToolbar extends StatelessWidget {
                   constraints: BoxConstraints(
                     maxWidth: compact ? constraints.maxWidth : 180,
                   ),
-                  child: ActionChip(
-                    avatar: const Icon(Icons.person_outline, size: 16),
-                    label: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  child: Tooltip(
+                    message:
+                        '${AudioSourceStyle.of(sourceByLabel[label]!).label} · click to rename',
+                    child: ActionChip(
+                      avatar: Icon(
+                        AudioSourceStyle.of(sourceByLabel[label]!).icon,
+                        size: 16,
+                        color: AudioSourceStyle.of(sourceByLabel[label]!).color,
+                      ),
+                      label: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onPressed: () => _renameSpeaker(context, label),
                     ),
-                    onPressed: () => _renameSpeaker(context, label),
                   ),
                 ),
               if (labels.isEmpty)
